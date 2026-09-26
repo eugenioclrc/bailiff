@@ -5,6 +5,7 @@ import {
 	HttpFailure,
 	assertJsonBody,
 	assertLoopbackClient,
+	assertLoopbackHost,
 	assertSameOrigin,
 	isLoopbackClient,
 	toHttpFailure
@@ -26,6 +27,15 @@ describe('guards', () => {
 		expect(isLoopbackClient('::1')).toBe(true);
 		expect(isLoopbackClient('::ffff:127.0.0.1')).toBe(true);
 		expect(statusOf(() => assertLoopbackClient('192.168.1.20'))).toBe(403);
+	});
+
+	test('loopback Host only, against DNS rebinding', () => {
+		for (const host of ['127.0.0.1', 'localhost', '[::1]']) {
+			expect(statusOf(() => assertLoopbackHost(host))).toBe(200);
+		}
+		for (const host of ['evil.test', '127.0.0.1.nip.io', '0.0.0.0']) {
+			expect(statusOf(() => assertLoopbackHost(host))).toBe(403);
+		}
 	});
 
 	test('same origin required', () => {

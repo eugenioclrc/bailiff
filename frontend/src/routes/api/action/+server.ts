@@ -5,6 +5,7 @@ import {
 	HttpFailure,
 	assertJsonBody,
 	assertLoopbackClient,
+	assertLoopbackHost,
 	assertSameOrigin
 } from '$lib/server/guards';
 import { currentHolder, tryAcquire } from '$lib/server/lock';
@@ -15,6 +16,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, url, getClientAddress }) => {
 	try {
 		assertLoopbackClient(getClientAddress());
+		assertLoopbackHost(url.hostname);
 		assertSameOrigin(request.headers.get('origin'), url.origin);
 		const body = assertJsonBody(request.headers.get('content-type'), await request.text());
 		const parsed = parseActionBody(body);

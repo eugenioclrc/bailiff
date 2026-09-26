@@ -27,6 +27,18 @@ export function assertLoopbackClient(address: string): void {
 		throw new HttpFailure(403, 'The demo API only answers loopback clients.');
 }
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/**
+ * The request's Host must be loopback too. Without this, a DNS-rebinding page could send a
+ * same-origin request (Origin and Host both its own name) from the presenter's own browser.
+ */
+export function assertLoopbackHost(hostname: string): void {
+	if (!LOOPBACK_HOSTS.has(hostname)) {
+		throw new HttpFailure(403, 'The demo API only answers requests addressed to a loopback host.');
+	}
+}
+
 /** Same-origin POST: the Origin header must be present and equal the server's own origin. */
 export function assertSameOrigin(originHeader: string | null, serverOrigin: string): void {
 	if (!originHeader || originHeader !== serverOrigin) {
