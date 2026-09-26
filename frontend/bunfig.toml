@@ -1,2 +1,5 @@
+# Bun must not load .env here: it holds the demo keys. SvelteKit reads it itself in dev and preview.
+env = false
+
 [test]
 preload = ["./scripts/test-preload.ts"]

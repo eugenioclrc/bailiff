@@ -1,5 +1,5 @@
 /**
- * Opt-in: BAILIFF_INTEGRATION=1 bun test src/lib/server/anvil.integration.test.ts
+ * Opt-in: BAILIFF_INTEGRATION=1 bun test --env-file=.env src/lib/server/anvil.integration.test.ts
  * Runs crash, horizon and reset against the local Anvil named in .env, and ends on the baseline.
  * Never run it while the dev server or a keeper is signing with the same keys.
  */

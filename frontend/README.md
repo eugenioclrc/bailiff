@@ -47,9 +47,9 @@ deploy and seed (O4).
 
 ```sh
 bun run check   # svelte-check, test files included (src/bun-test.d.ts declares bun:test)
-bun test        # unit, server and route tests; no chain needed
+bun test        # unit, server and route tests; no chain, and .env is never loaded
 bun run build
-BAILIFF_INTEGRATION=1 bun test src/lib/server/anvil.integration.test.ts   # crash, horizon, reset on Anvil
+BAILIFF_INTEGRATION=1 bun test --env-file=.env src/lib/server/anvil.integration.test.ts   # crash, horizon, reset on Anvil
 ```
 
 Do not run `check`, `build` or `abis` while recording the demo: they regenerate `.svelte-kit` and
