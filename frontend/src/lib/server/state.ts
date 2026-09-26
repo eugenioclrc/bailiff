@@ -4,11 +4,13 @@
  */
 import { decodeFunctionResult, encodeFunctionData, maxUint256, type Abi, type Address } from 'viem';
 import { adapterAbi, miniLendAbi, paAbi, rwaAbi, stateViewAbi, usdcAbi } from '../abis.generated';
-import { formatDuration, navFloorWad, spotPriceWad, virtualReserves } from '../format';
+import { spotPriceWad, virtualReserves } from '../format';
+import { liquidationGate, navStatus } from '../nav';
 import type { BalanceSnapshot } from '../reconcile';
 import type { ChainState, Holder, HolderKey, Quote, ReadValue } from '../types';
 import { readMany, simulate, type ReadCall, type ReadResult } from './chain';
 import type { DemoContext } from './context';
+import { currentBranch } from './reset';
 
 export const CHUNK_REPAY = 10_000n * 10n ** 6n;
 
@@ -159,24 +161,6 @@ async function quote(ctx: DemoContext, repayAssets: bigint): Promise<Quote> {
 	return { repayAssets: repay, ok: true, bounty: bounty.toString() };
 }
 
-function navStatus(
-	r: Record<string, ReadResult>,
-	timestamp: bigint,
-	floorBps: number
-): ChainState['navStatus'] {
-	const nav = valueOf(r['market.nav']) as bigint | undefined;
-	const updatedAt = valueOf(r['market.navUpdatedAt']) as bigint | undefined;
-	const maxStaleness = valueOf(r['market.MAX_STALENESS']) as bigint | undefined;
-	if (nav === undefined || updatedAt === undefined || maxStaleness === undefined) {
-		return { fresh: null, ageSeconds: null, floor: null };
-	}
-	return {
-		fresh: timestamp <= updatedAt + maxStaleness,
-		ageSeconds: (timestamp - updatedAt).toString(),
-		floor: navFloorWad(nav, floorBps).toString()
-	};
-}
-
 function poolState(
 	ctx: DemoContext,
 	r: Record<string, ReadResult>,
@@ -205,32 +189,27 @@ function poolState(
 	};
 }
 
-function liquidationGate(
-	status: ChainState['navStatus'],
-	maxStaleness: unknown
-): ChainState['liquidation'] {
-	if (status.fresh === null)
-		return { enabled: false, reason: 'NAV could not be read, so liquidation is disabled.' };
-	if (status.fresh) return { enabled: true, reason: null };
-	const age = formatDuration(BigInt(status.ageSeconds ?? '0'));
-	const limit = typeof maxStaleness === 'bigint' ? formatDuration(maxStaleness) : 'the limit';
-	return {
-		enabled: false,
-		reason: `NAV is stale: last update ${age} ago, limit ${limit}. MiniLend would revert with StaleNav.`
-	};
-}
-
 export async function readState(ctx: DemoContext): Promise<ChainState> {
 	const m = ctx.manifest;
 	const block = await ctx.client.getBlock();
 	// Anvil's pending block carries the timestamp the next transaction will be mined with.
 	const pending = await ctx.client.getBlock({ blockTag: 'pending' }).catch(() => block);
-	const [r, full, chunk] = await Promise.all([
+	const [r, full, chunk, branch] = await Promise.all([
 		readMany(ctx, stateCalls(ctx), block.number),
 		quote(ctx, maxUint256),
-		quote(ctx, CHUNK_REPAY)
+		quote(ctx, CHUNK_REPAY),
+		currentBranch(ctx)
 	]);
-	const status = navStatus(r, pending.timestamp, m.navFloorBps);
+	const maxStaleness = valueOf(r['market.MAX_STALENESS']) as bigint | undefined;
+	const status = navStatus(
+		{
+			nav: valueOf(r['market.nav']) as bigint | undefined,
+			updatedAt: valueOf(r['market.navUpdatedAt']) as bigint | undefined,
+			maxStaleness
+		},
+		pending.timestamp,
+		m.navFloorBps
+	);
 	const holders: Holder[] = HOLDERS.map(({ key, label }) => ({
 		key,
 		label,
@@ -267,6 +246,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 			sourceCommit: m.sourceCommit
 		},
 		block: { number: block.number.toString(), timestamp: block.timestamp.toString() },
+		branch,
 		addresses: Object.fromEntries(addressFields.map((f) => [f, m[f] as Address])),
 		poolId: m.poolId,
 		rwaIsCurrency0: m.rwaIsCurrency0,
@@ -298,7 +278,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 			hookAllowed: toRead(r['pa.hookAllowed'], bool)
 		},
 		quotes: { full, chunk },
-		liquidation: liquidationGate(status, valueOf(r['market.MAX_STALENESS']))
+		liquidation: liquidationGate(status, maxStaleness)
 	};
 }
 

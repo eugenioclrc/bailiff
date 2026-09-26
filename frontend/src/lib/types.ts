@@ -170,6 +170,8 @@ export type ChainState = {
 		sourceCommit: string;
 	};
 	block: { number: string; timestamp: string };
+	/** Snapshot id saved by the last reset; it changes on every reset, so it names the branch. */
+	branch: string | null;
 	addresses: Record<string, string>;
 	poolId: string;
 	/** PA sorts before USDC, so the RWA side of a Swap is amount0. */

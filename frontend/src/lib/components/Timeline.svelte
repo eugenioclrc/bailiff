@@ -15,6 +15,9 @@
 	<!-- The list scrolls on its own; a focusable region lets keyboard users scroll it (WCAG 2.1.1). -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<div class="scroll" tabindex="0" role="region" aria-label="Timeline entries">
+		{#if demo.branchNotice}
+			<p class="notice" role="status">{demo.branchNotice}</p>
+		{/if}
 		{#if demo.timeline.length === 0}
 			<p class="empty">No actions on this branch yet. Start with the issuer: cut NAV to 85.</p>
 		{:else}
@@ -60,6 +63,14 @@
 	ol {
 		display: grid;
 		gap: 8px;
+	}
+
+	.notice {
+		margin-bottom: 8px;
+		padding: 6px 10px;
+		border-left: 4px solid var(--color-reset);
+		background: color-mix(in srgb, var(--color-reset) 8%, var(--color-sheet));
+		font-size: 12px;
 	}
 
 	.empty {

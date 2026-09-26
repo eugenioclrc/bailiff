@@ -37,9 +37,13 @@ export class Demo {
 	actionError = $state<{ action: ActionName; message: string } | null>(null);
 	timeline = $state.raw<TimelineItem[]>([]);
 	announcement = $state('');
+	/** Set when the chain was reset outside this page and the old timeline was dropped. */
+	branchNotice = $state<string | null>(null);
 
 	#nextId = 1;
 	#latestRead = 0;
+	/** Snapshot id of the branch the timeline belongs to. */
+	#branch: string | null = null;
 
 	async refresh(): Promise<void> {
 		const ticket = ++this.#latestRead;
@@ -55,7 +59,14 @@ export class Demo {
 				this.loadError = messageOf(body, res.status);
 				return;
 			}
-			this.state = body as ChainState;
+			const next = body as ChainState;
+			if (this.#branch !== null && next.branch !== null && next.branch !== this.#branch) {
+				this.timeline = [];
+				this.branchNotice = `The chain was reset outside this page at ${new Date().toLocaleTimeString('en-GB')}; the previous timeline was cleared.`;
+				this.announcement = this.branchNotice;
+			}
+			this.#branch = next.branch ?? this.#branch;
+			this.state = next;
 			this.stale = false;
 			this.loadError = null;
 		} catch {
@@ -90,6 +101,10 @@ export class Demo {
 				action,
 				response
 			};
+			if (response.status === 'reset') {
+				this.#branch = response.snapshotId ?? null;
+				this.branchNotice = null;
+			}
 			this.timeline = response.status === 'reset' ? [item] : [item, ...this.timeline];
 			this.stale = response.status !== 'simulation-reverted';
 			this.announcement = summarize(action, response);

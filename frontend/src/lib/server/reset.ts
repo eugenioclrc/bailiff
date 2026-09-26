@@ -36,6 +36,15 @@ async function readRecord(ctx: DemoContext): Promise<SnapshotRecord> {
 	return record;
 }
 
+/** Snapshot id of the current branch; every reset writes a new one. null when the file is unusable. */
+export async function currentBranch(ctx: DemoContext): Promise<string | null> {
+	try {
+		return (await readRecord(ctx)).snapshotId;
+	} catch {
+		return null;
+	}
+}
+
 /** Write-then-rename so a crash never leaves a half-written snapshot file. */
 async function writeRecord(path: string, record: SnapshotRecord): Promise<void> {
 	const temp = `${path}.${process.pid}.tmp`;
