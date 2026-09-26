@@ -81,7 +81,8 @@ Reading this as: single-screen evidence console for ETHGlobal technical judges, 
   and controls, then the receipts. The panels are not copies of each other.
 - **MOTION 2:** one motion, with one purpose. When a liquidation is mined, the ochre sweep crosses
   MiniLend, the adapter, the pool wrapper and PoolManager, then the USDC lanes fill back to the
-  adapter and out to MiniLend, the keeper and the borrower wallet. A simulation that would revert
-  runs dashed up to the contract that refuses it and stops at a red bar. It plays once per action
-  and never loops; a reloaded page and `prefers-reduced-motion` show the final state at once.
-  Apart from a 120 ms fade when figures turn stale, nothing else moves.
+  adapter and split into debt repaid, the keeper's bounty and the residual: to the borrower wallet
+  on the deployed snapshot, or a credit withdrawable by the borrower once MiniLend applies it. A
+  simulation that would revert runs dashed up to the contract that refuses it and stops at a red
+  bar. It plays once per action and never loops; a reloaded page and `prefers-reduced-motion` show
+  the final state at once. Apart from a 120 ms grey-out when figures turn stale, nothing else moves.
