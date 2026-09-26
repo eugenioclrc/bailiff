@@ -20,23 +20,33 @@ manifest and the baseline snapshot (OPERATIONS.md O4).
 
 Create `.env` in this folder (it is git-ignored). Names only; never commit or paste the values.
 
-| Variable          | Meaning                                                   |
-| ----------------- | --------------------------------------------------------- |
-| `DEMO_MODE`       | must be `local`; any other value disables the server API  |
-| `ANVIL_RPC`       | `http://127.0.0.1:8545` or another loopback URL           |
-| `ISSUER_PK`       | issuer key (NAV oracle, pool wrapper owner)               |
-| `MM_PK`           | market maker key (liquidity desk owner)                   |
-| `KEEPER_PK`       | keeper key (no flags, no tokens, gas only)                |
-| `DEPLOYMENT_FILE` | absolute path to the O2 manifest, `anvil.json`            |
-| `SNAPSHOT_FILE`   | absolute path to the O4 snapshot record, not the manifest |
+| Variable          | Meaning                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `DEMO_MODE`       | must be `local`; any other value disables the server API       |
+| `ANVIL_RPC`       | `http://127.0.0.1:8545` or another loopback URL                |
+| `ISSUER_PK`       | issuer key (NAV oracle, pool wrapper owner)                    |
+| `MM_PK`           | market maker key (liquidity desk owner)                        |
+| `KEEPER_PK`       | keeper key (no flags, no tokens, gas only)                     |
+| `DEPLOYMENT_FILE` | absolute path to the O2 manifest, `anvil.json`                 |
+| `SNAPSHOT_FILE`   | absolute path to the O4 snapshot record, not the manifest      |
+| `EVIDENCE_FILE`   | absolute path to a `.jsonl` evidence log, outside `contracts/` |
 
-Every action and every local reset is appended to `evidence.jsonl` next to `SNAPSHOT_FILE`, so
-the receipts of a branch discarded by a reset stay on disk.
+Every action, failed ones included, and every local reset is appended to `EVIDENCE_FILE`, so the
+receipts of a branch discarded by a reset stay on disk. Keep it outside the repository, for
+example next to the dev manifest; it is never committed.
+
+While an action runs, the server holds `SNAPSHOT_FILE.lock` (it carries the server's pid). A
+second server or the integration test answers 409 instead of sending between a reset's
+`evm_revert` and `evm_snapshot`; a lock left by a crashed process is taken over. Before the new
+snapshot is taken, the reverted chain is checked against the O3 baseline (NAV 100, borrower
+1,000 RWA / 75,000 USDC, adapter wrapper on, L 5e17). A mismatch answers 409 and takes no new
+snapshot, since that would save the stray transaction into every later reset; rerun the local
+deploy and seed (O4).
 
 ## Checks
 
 ```sh
-bun run check   # svelte-check
+bun run check   # svelte-check, test files included (src/bun-test.d.ts declares bun:test)
 bun test        # unit, server and route tests; no chain needed
 bun run build
 BAILIFF_INTEGRATION=1 bun test src/lib/server/anvil.integration.test.ts   # crash, horizon, reset on Anvil
