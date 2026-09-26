@@ -1,8 +1,9 @@
 # Bailiff demo console
 
-One page that drives the Bailiff demo on a **local Anvil fork of Sepolia**: issuer, market maker
-and keeper actions, the borrower's position, and a timeline of decoded receipts. The server signs
-with local demo keys and refuses to run against anything but Anvil (chain 31337) on loopback.
+One page that drives the Bailiff demo on a **local Anvil fork of Sepolia**: the collateral rail
+(where the seized RWA goes), issuer, market maker and keeper actions, the borrower's position, and
+a timeline of decoded receipts. The server signs with local demo keys and refuses to run against
+anything but Anvil (chain 31337) on loopback.
 
 ## Run it
 
@@ -67,3 +68,20 @@ timeline grows while the collateral rail stays on screen.
 When the fixed contracts are redeployed, rerun the local deploy and seed (it rewrites the manifest
 and the snapshot record), then `bun run abis` so the spec getters, errors and events decode from
 the new artifacts.
+
+## Design
+
+Reading this as: single-screen evidence console for ETHGlobal technical judges, recorded at
+1280x720, ledger language (`../DESIGN.md`), dial ENERGY 2 / RHYTHM 2 / MOTION 2.
+
+- **ENERGY 2:** the collateral rail is the focal point, first under the header at every width. The
+  one ochre accent marks only the rail segments the seized RWA crossed and the two liquidate
+  buttons; ink on warm paper carries every other figure, and steel pushes context back.
+- **RHYTHM 2:** a full-width rail, then four role panels that each hold only their role's reads
+  and controls, then the receipts. The panels are not copies of each other.
+- **MOTION 2:** one motion, with one purpose. When a liquidation is mined, the ochre sweep crosses
+  MiniLend, the adapter, the pool wrapper and PoolManager, then the USDC lanes fill back to the
+  adapter and out to MiniLend, the keeper and the borrower wallet. A simulation that would revert
+  runs dashed up to the contract that refuses it and stops at a red bar. It plays once per action
+  and never loops; a reloaded page and `prefers-reduced-motion` show the final state at once.
+  Apart from a 120 ms fade when figures turn stale, nothing else moves.
