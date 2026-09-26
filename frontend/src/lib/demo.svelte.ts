@@ -71,6 +71,11 @@ export class Demo {
 	announcement = $state('');
 	/** Set when the chain was reset outside this page and the old timeline was archived. */
 	branchNotice = $state<string | null>(null);
+	/**
+	 * Id of the newest entry this page produced by pressing a control. Entries restored from the
+	 * session copy never get it, so the rail replays motion only for what just happened here.
+	 */
+	lastRunId = $state<number | null>(null);
 
 	#nextId = 1;
 	#latestRead = 0;
@@ -182,6 +187,7 @@ export class Demo {
 			this.branchNotice = null;
 		}
 		this.timeline = [item, ...this.timeline];
+		this.lastRunId = item.id;
 		this.stale = response.status !== 'simulation-reverted';
 		this.announcement = summarize(action, response);
 		this.#persist();
@@ -239,6 +245,7 @@ export class Demo {
 			await this.refresh();
 			const item = probeItem(body as ProbeRecord, this.#nextId++, clock());
 			this.timeline = [item, ...this.timeline];
+			this.lastRunId = item.id;
 			this.announcement = probeSummary(item.quote);
 			this.#persist();
 		} catch {

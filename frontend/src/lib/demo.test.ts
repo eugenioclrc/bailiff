@@ -101,6 +101,7 @@ describe('Demo', () => {
 		expect(demo.stale).toBe(false);
 		expect(demo.pending).toBeNull();
 		expect(demo.announcement).toContain('mined on local Anvil');
+		expect(demo.lastRunId).toBe(demo.timeline[0].id);
 	});
 
 	test('a reset starts a fresh timeline and archives the discarded branch', async () => {
@@ -203,6 +204,7 @@ describe('Demo', () => {
 		const [probe] = demo.timeline;
 		expect(probe).toMatchObject({ kind: 'probe', block: '11782751', quote: revoked });
 		expect(demo.announcement).toContain('would revert with Unauthorized');
+		expect(demo.lastRunId).toBe(probe.id);
 		expect(demo.actionError).toBeNull();
 		expect(demo.pending).toBeNull();
 	});
@@ -245,6 +247,8 @@ describe('Demo', () => {
 		const reloaded = new Demo();
 		await reloaded.refresh();
 		expect(reloaded.timeline).toHaveLength(1);
+		// Restored, not pressed here: the rail shows it without replaying the motion.
+		expect(reloaded.lastRunId).toBeNull();
 		stateReplies.push({ status: 200, body: chainState('0x11') });
 		const afterReset = new Demo();
 		await afterReset.refresh();
