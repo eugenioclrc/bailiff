@@ -87,7 +87,7 @@
 	}
 
 	h2 {
-		font: 400 20px/1 var(--font-display);
+		font: 600 20px/1 var(--font-display);
 		padding-top: 2px;
 	}
 

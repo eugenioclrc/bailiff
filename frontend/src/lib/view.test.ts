@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { ActionResponse, ReadValue } from './types';
 import {
 	argUnit,
+	callParts,
 	emitterName,
 	healthStatus,
 	showBool,
@@ -43,6 +44,44 @@ describe('showRead', () => {
 	test('flags read as names', () => {
 		expect(showFlags({ ok: true, value: 0x8003 }).text).toBe('HOLDER, SWAP, LIQUIDITY');
 		expect(showFlags({ ok: true, value: 0 }).text).toBe('NONE');
+	});
+});
+
+describe('callParts', () => {
+	const shape = (call: string) => callParts(call).map(({ kind, text }) => ({ kind, text }));
+
+	test('parts are keyed by their offset in the call', () => {
+		expect(callParts('market.setNav(85e18)').map((p) => p.at)).toEqual([0, 14, 19]);
+	});
+
+	test('hex goes to code, amounts to figures, identifiers stay text', () => {
+		expect(shape('adapter.liquidate(borrower, maxUint256, minBounty 4,365.00 USDC)')).toEqual([
+			{ kind: 'text', text: 'adapter.liquidate(borrower, maxUint256, minBounty ' },
+			{ kind: 'num', text: '4,365.00' },
+			{ kind: 'text', text: ' USDC)' }
+		]);
+		expect(shape('market.setNav(85e18)')).toEqual([
+			{ kind: 'text', text: 'market.setNav(' },
+			{ kind: 'num', text: '85e18' },
+			{ kind: 'text', text: ')' }
+		]);
+		expect(shape('evm_revert(0x1f) then evm_snapshot() on the local Anvil')).toEqual([
+			{ kind: 'text', text: 'evm_revert(' },
+			{ kind: 'hex', text: '0x1f' },
+			{ kind: 'text', text: ') then evm_snapshot() on the local Anvil' }
+		]);
+	});
+
+	test('signed and scientific amounts stay whole', () => {
+		expect(
+			shape('desk.modifyLiquidity(poolKey, -887220, 887220, -4.75e17)').filter(
+				(p) => p.kind === 'num'
+			)
+		).toEqual([
+			{ kind: 'num', text: '-887220' },
+			{ kind: 'num', text: '887220' },
+			{ kind: 'num', text: '-4.75e17' }
+		]);
 	});
 });
 

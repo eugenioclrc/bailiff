@@ -104,6 +104,27 @@ export function emitterName(key: string): string {
 	return EMITTER_NAMES[key] ?? key;
 }
 
+/** `at` is the offset in the call string: stable and unique, so it keys the rendered parts. */
+export type CallPart = { kind: 'text' | 'hex' | 'num'; text: string; at: number };
+
+/** Hex (addresses, hashes, selectors) or a standalone amount; digits inside names like maxUint256 are not amounts. */
+const CALL_TOKEN =
+	/(?<![\w.])(?:0x[0-9a-fA-F]*|-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:e-?\d+)?)(?![\w])/g;
+
+/** Splits a call line so only hex is set in mono and amounts use the tabular figures. */
+export function callParts(call: string): CallPart[] {
+	const parts: CallPart[] = [];
+	let last = 0;
+	for (const match of call.matchAll(CALL_TOKEN)) {
+		const start = match.index;
+		if (start > last) parts.push({ kind: 'text', text: call.slice(last, start), at: last });
+		parts.push({ kind: match[0].startsWith('0x') ? 'hex' : 'num', text: match[0], at: start });
+		last = start + match[0].length;
+	}
+	if (last < call.length) parts.push({ kind: 'text', text: call.slice(last), at: last });
+	return parts;
+}
+
 export function statusLabel(response: ActionResponse): string {
 	if (response.status === 'reset') return 'Local reset, not a transaction';
 	if (response.status === 'simulation-reverted') return 'Simulation: would revert';

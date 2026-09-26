@@ -139,7 +139,7 @@
 	}
 
 	h2 {
-		font: 400 16px/1 var(--font-display);
+		font: 600 16px/1 var(--font-display);
 		letter-spacing: 0.02em;
 		padding-top: 2px;
 	}

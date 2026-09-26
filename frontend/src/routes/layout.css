@@ -21,11 +21,10 @@
 	/* 5.7:1 on sheet, 4.9:1 on ground: a focus ring must reach 3:1 (WCAG 1.4.11), on a projector too. */
 	--color-focus: #8a5a00;
 
-	--font-display:
-		'DIN Condensed', 'Bahnschrift SemiCondensed', 'Roboto Condensed', 'Arial Narrow', sans-serif;
-	--font-figure: 'DIN Alternate', 'Bahnschrift', 'Roboto', 'Helvetica Neue', sans-serif;
-	--font-body: 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
-	--font-code: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+	--font-display: 'IBM Plex Sans', system-ui, sans-serif;
+	--font-figure: 'IBM Plex Sans', system-ui, sans-serif;
+	--font-body: 'IBM Plex Sans', system-ui, sans-serif;
+	--font-code: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 :root {
@@ -67,7 +66,7 @@ code,
 	overflow-wrap: anywhere;
 }
 
-/* Numbers: condensed figures, tabular so columns do not jitter between reads. */
+/* IBM Plex: engineering heritage; tabular lining figures keep balance columns aligned; mono only for hex. */
 .num {
 	font-family: var(--font-figure);
 	font-variant-numeric: tabular-nums lining-nums;

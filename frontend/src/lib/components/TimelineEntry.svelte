@@ -3,7 +3,7 @@
 	import type { TimelineItem } from '$lib/demo.svelte';
 	import { formatUnit, shortAddress } from '$lib/format';
 	import type { ActionItem } from '$lib/timeline';
-	import { probeStatusLabel, statusLabel } from '$lib/view';
+	import { callParts, probeStatusLabel, statusLabel } from '$lib/view';
 	import LogTable from './LogTable.svelte';
 	import ReconcileSummary from './ReconcileSummary.svelte';
 	import RevertChain from './RevertChain.svelte';
@@ -30,6 +30,15 @@
 	);
 </script>
 
+{#snippet callLine(call: string)}
+	<!-- Only hex is set in mono; amounts use the tabular figures of the rest of the page. -->
+	<p class="call">
+		{#each callParts(call) as part (part.at)}{#if part.kind === 'hex'}<code>{part.text}</code
+				>{:else if part.kind === 'num'}<span class="num">{part.text}</span
+				>{:else}{part.text}{/if}{/each}
+	</p>
+{/snippet}
+
 <article class={['entry', kind]} aria-label="{title}: {tag}">
 	<header>
 		<span class="tag">{tag}</span>
@@ -49,7 +58,7 @@
 	</header>
 
 	{#if item.kind === 'probe'}
-		<p class="call"><code>{item.call}</code></p>
+		{@render callLine(item.call)}
 		{#if item.quote.ok}
 			<p class="body">
 				Would repay and pay the keeper a bounty of
@@ -65,7 +74,7 @@
 	{:else}
 		{@const response = item.response}
 		{@const detail = response.detail}
-		<p class="call"><code>{detail.call}</code></p>
+		{@render callLine(detail.call)}
 
 		{#if response.status === 'reset' && detail.reset}
 			<p class="body">
@@ -186,7 +195,7 @@
 	}
 
 	h3 {
-		font: 400 19px/1 var(--font-display);
+		font: 600 19px/1 var(--font-display);
 		padding-top: 2px;
 	}
 

@@ -57,7 +57,7 @@
 	}
 
 	h2 {
-		font: 400 22px/1 var(--font-display);
+		font: 600 22px/1 var(--font-display);
 		letter-spacing: 0.01em;
 		padding-top: 2px;
 	}

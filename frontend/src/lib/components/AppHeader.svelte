@@ -47,7 +47,7 @@
 	}
 
 	h1 {
-		font: 400 27px/1 var(--font-display);
+		font: 600 27px/1 var(--font-display);
 		letter-spacing: 0.005em;
 		padding-top: 3px;
 	}

@@ -70,7 +70,7 @@
 
 	.cause {
 		color: var(--color-alert);
-		font: 400 18px/1 var(--font-display);
+		font: 600 18px/1 var(--font-display);
 		padding-top: 2px;
 	}
 
