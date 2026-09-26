@@ -82,6 +82,15 @@ describe('Demo', () => {
 		expect(demo.loading).toBe(false);
 	});
 
+	test('an unreachable server names the dev command without markdown backticks', async () => {
+		stateReplies.push(new Error('connection refused'));
+		const demo = new Demo();
+		await demo.refresh();
+		expect(demo.loadError).toBe(
+			'The local server did not answer. Is the dev server (bun run dev) running?'
+		);
+	});
+
 	test('a mined action goes on top and the figures refresh after it', async () => {
 		const demo = new Demo();
 		await demo.refresh();

@@ -140,7 +140,8 @@ export class Demo {
 			this.loadError = null;
 		} catch {
 			if (ticket === this.#latestRead)
-				this.loadError = 'The local server did not answer. Is `bun run dev` running?';
+				this.loadError =
+					'The local server did not answer. Is the dev server (bun run dev) running?';
 		} finally {
 			if (ticket === this.#latestRead) this.loading = false;
 		}
