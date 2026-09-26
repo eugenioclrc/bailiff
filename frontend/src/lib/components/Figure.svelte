@@ -17,17 +17,22 @@
 
 <div class="row">
 	<dt>{label}</dt>
+	<!-- No whitespace between amount and unit: the pair never splits when the value wraps. -->
 	<dd class={['value', shown.tone, state]} title={detail}>
-		<span class={{ num: shown.tone === 'value' }}>{shown.text}</span>
-		{#if unit && shown.tone === 'value'}<span class="unit">{unit}</span>{/if}
+		<span class={{ num: shown.tone === 'value' }}>{shown.text}</span
+		>{#if unit && shown.tone === 'value'}<span class="unit">{unit}</span>{/if}
 		{#if note}<span class="note">{note}</span>{/if}
 	</dd>
 </div>
 
 <style>
+	/*
+	 * The label never shrinks below its longest word, so a wide value can no longer run under it
+	 * ("CheckeHOLDER" at 1101px); the value wraps between words instead, and only when it must.
+	 */
 	.row {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: minmax(min-content, 1fr) auto;
 		align-items: baseline;
 		gap: 8px;
 		padding: 1px 0;
@@ -42,7 +47,6 @@
 	dd {
 		text-align: right;
 		font-size: 13.5px;
-		white-space: nowrap;
 	}
 
 	.unit,
