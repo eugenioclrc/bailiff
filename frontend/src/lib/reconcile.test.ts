@@ -66,6 +66,9 @@ describe('reconcileLiquidation', () => {
 			expect([id, checks[id]]).toEqual([id, true]);
 		}
 		expect(checks['residual-split']).toBeNull();
+		expect(result.checks.find((c) => c.id === 'residual-direct')?.note).toBe(
+			'The deployed LiquidationAdapter pays the residual straight to the borrower; the spec routes it through MiniLend.settleLiquidationResidual.'
+		);
 	});
 
 	test('keeper holding RWA afterwards fails the custody check', () => {

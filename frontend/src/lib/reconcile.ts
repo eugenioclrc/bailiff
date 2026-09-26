@@ -170,7 +170,7 @@ function residualChecks(
 					'usdc',
 					residual,
 					direct,
-					'Snapshot contract pays the residual straight to the borrower; the spec routes it through MiniLend.settleLiquidationResidual.'
+					'The deployed LiquidationAdapter pays the residual straight to the borrower; the spec routes it through MiniLend.settleLiquidationResidual.'
 				),
 				check(
 					'borrower-usdc',

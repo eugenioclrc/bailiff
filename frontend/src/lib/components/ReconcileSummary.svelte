@@ -7,12 +7,13 @@
 	let liq = $derived(reconciliation.liquidation);
 	let applicable = $derived(reconciliation.checks.filter((c) => c.ok !== null));
 	let failing = $derived(applicable.filter((c) => c.ok === false));
+	let notApplicable = $derived(reconciliation.checks.length - applicable.length);
 
 	let routeText = $derived.by(() => {
 		const residual = liq ? formatUnit(liq.residual, 'usdc') : '0.00';
 		switch (reconciliation.residualRoute) {
 			case 'direct-to-borrower':
-				return `Residual ${residual} USDC went straight to the borrower wallet: the deployed snapshot contract does this. The spec sends it to MiniLend.settleLiquidationResidual, which repays remaining debt first, then written-off debt, and books any excess as a claim withdrawable by the borrower (ResidualApplied).`;
+				return `Residual ${residual} USDC went straight to the borrower wallet: the deployed LiquidationAdapter transfers it directly. The spec sends it to MiniLend.settleLiquidationResidual, which repays remaining debt first, then written-off debt, and books any excess as a claim withdrawable by the borrower (ResidualApplied).`;
 			case 'residual-applied': {
 				const a = reconciliation.residualApplied;
 				return a
@@ -68,7 +69,9 @@
 	{/if}
 	<details open={failing.length > 0}>
 		<summary class={{ bad: failing.length > 0 }}>
-			{applicable.length - failing.length} of {applicable.length} reconciliation checks agree
+			{applicable.length - failing.length} of {applicable.length} applicable checks agree{notApplicable
+				? `; ${notApplicable} not applicable`
+				: ''}
 		</summary>
 		<ul class="checks">
 			{#each reconciliation.checks as check (check.id)}
