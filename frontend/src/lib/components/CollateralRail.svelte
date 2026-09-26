@@ -289,7 +289,7 @@
 		position: relative;
 		display: grid;
 		grid-template-columns:
-			120px max-content minmax(56px, 1fr) max-content minmax(56px, 1fr)
+			150px max-content minmax(56px, 1fr) max-content minmax(56px, 1fr)
 			max-content minmax(56px, 1fr) max-content max-content;
 		grid-template-rows: 14px 26px 16px minmax(16px, auto) 16px auto;
 		grid-template-areas:
@@ -306,7 +306,7 @@
 		grid-area: head;
 		align-self: start;
 		padding-right: 10px;
-		font: 600 15px/1.15 var(--font-display);
+		font: 600 17px/1.15 var(--font-display);
 	}
 
 	.legend {

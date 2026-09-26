@@ -103,7 +103,7 @@
 	}
 
 	h2 {
-		font: 600 20px/1 var(--font-display);
+		font: 600 17px/1 var(--font-display);
 		padding-top: 2px;
 	}
 

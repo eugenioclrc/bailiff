@@ -64,8 +64,9 @@
 		gap: 6px 8px;
 	}
 
+	/* Smaller than the rail's balances: the role panels support the rail, the focal point. */
 	h2 {
-		font: 600 22px/1 var(--font-display);
+		font: 600 17px/1 var(--font-display);
 		letter-spacing: 0.01em;
 		padding-top: 2px;
 	}
