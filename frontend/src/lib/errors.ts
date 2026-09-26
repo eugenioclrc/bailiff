@@ -160,13 +160,16 @@ export function decodeRevert(data: Hex | undefined, ctx: DecodeContext, target?:
 	const layers = decodeLayers(data, toTarget(target, ctx), ctx, 0);
 	const cause = layers[layers.length - 1];
 	const wrappers = layers.filter((l) => l.kind === 'wrapped');
-	const source = cause.target ? ` from ${targetText(cause.target)}` : '';
-	const path = wrappers.length
-		? `; raised in ${wrappers.map((w) => shortCall(w.call)).join(' → ')} and wrapped as ${wrappers
+	const declared = cause.declaredBy.length ? ` [declared by ${cause.declaredBy.join(', ')}]` : '';
+	// Only a WrappedError names the reverting contract; otherwise the error may have bubbled up.
+	const origin = wrappers.length
+		? `; raised by ${targetText(cause.target)} in ${wrappers.map((w) => shortCall(w.call)).join(' → ')}, wrapped as ${wrappers
 				.map((w) => w.context ?? 'WrappedError')
 				.join(' → ')}`
-		: '';
-	return { name: leafName(cause), message: `${leafText(cause)}${source}${path}`, layers };
+		: cause.target
+			? `; returned by the call to ${targetText(cause.target)}`
+			: '';
+	return { name: leafName(cause), message: `${leafText(cause)}${declared}${origin}`, layers };
 }
 
 /** Finds the revert payload on a viem error or any nested `cause`, without assuming its class. */
