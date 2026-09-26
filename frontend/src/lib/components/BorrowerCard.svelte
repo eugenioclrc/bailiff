@@ -27,7 +27,7 @@
 	const STATUS_TEXT = {
 		healthy: 'Healthy: HF at or above 1',
 		liquidatable: 'Liquidatable: HF below 1',
-		'no-debt': 'healthFactor() returns max uint256 at zero debt',
+		'no-debt': 'returns max uint256',
 		unknown: 'Health factor unavailable',
 		stale: 'NAV is stale: MiniLend would revert StaleNav'
 	} as const;
@@ -68,7 +68,7 @@
 		unit="USDC"
 	/>
 	<Figure
-		label="Written-off debt, this borrower"
+		label="Written off, this borrower"
 		shown={showRead(s?.market.badDebtOf, 'usdc')}
 		unit="USDC"
 	/>

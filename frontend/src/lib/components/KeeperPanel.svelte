@@ -70,7 +70,7 @@
 <Panel
 	title="Keeper"
 	address={s?.addresses.keeper}
-	blurb="Anyone can call the adapter: it needs no KYC flag, no USDC and no RWA."
+	blurb="Anyone can call the adapter: it needs no KYC, USDC or RWA."
 	loaded={s !== null}
 	failed={demo.loadError !== null}
 >

@@ -92,7 +92,14 @@ describe('syncText', () => {
 	} as unknown as Parameters<typeof syncText>[0];
 
 	test('names the local chain, not a live network', () => {
-		expect(syncText(state, false, null)).toBe('Local chain at block 11782757, NAV set 2m 42s ago');
+		expect(syncText(state, false, null)).toBe(
+			'Local chain at block 11782757, NAV\u00a0set\u00a02m\u00a042s\u00a0ago'
+		);
+	});
+
+	test('the NAV age never breaks across lines', () => {
+		const text = syncText(state, false, null);
+		expect(text.slice(text.indexOf('NAV'))).not.toMatch(/ /);
 	});
 
 	test('a failed read wins over a pending refresh, so the header never waits forever', () => {

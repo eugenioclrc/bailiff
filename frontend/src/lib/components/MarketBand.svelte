@@ -26,7 +26,7 @@
 	let floorNote = $derived.by(() => {
 		if (!s) return '';
 		if (!floorEnforced)
-			return 'The deployed adapter does not check this floor yet: its swap has no price limit, so only the repayment and minBounty checks can make it revert.';
+			return 'The deployed adapter does not check this floor yet; repayment and minBounty checks still apply.';
 		if (s.pool.spotAboveFloor === null) return 'Pool spot unavailable; floor status unknown.';
 		return s.pool.spotAboveFloor
 			? 'Spot is above the floor, so the adapter may sell.'
@@ -130,9 +130,10 @@
 </section>
 
 <style>
+	/* Custody keeps the width its path needs; prices get the rest, so note and totals stay one line. */
 	.band {
 		display: grid;
-		grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
+		grid-template-columns: minmax(0, 1fr) auto;
 		border-radius: 4px;
 		overflow: hidden;
 		border: 1px solid var(--color-steel-deep);

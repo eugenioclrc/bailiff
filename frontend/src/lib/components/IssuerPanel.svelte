@@ -29,7 +29,7 @@
 	failed={demo.loadError !== null}
 >
 	<Figure
-		label="NAV, USDC per RWA"
+		label="NAV, USDC/RWA"
 		shown={showRead(s?.market.nav, 'wad')}
 		note={navNote}
 		state={s?.navStatus.fresh === false ? 'bad' : 'plain'}

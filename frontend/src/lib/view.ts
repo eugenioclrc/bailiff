@@ -21,6 +21,8 @@ import type {
 
 export { argUnit } from './units';
 
+const NBSP = '\u00a0';
+
 export type Tone = 'value' | 'missing' | 'failed';
 export type Shown = { text: string; tone: Tone };
 
@@ -69,8 +71,9 @@ export function syncText(
 			: `Last good read at local block ${state.block.number}`;
 	}
 	if (stale) return 'Updating after the last action…';
+	// Non-breaking spaces keep the age on one line: "NAV set 4m / 39s ago" read as two figures.
 	const age = state.navStatus.ageSeconds
-		? `, NAV set ${formatDuration(BigInt(state.navStatus.ageSeconds))} ago`
+		? `, ${`NAV set ${formatDuration(BigInt(state.navStatus.ageSeconds))} ago`.replaceAll(' ', NBSP)}`
 		: '';
 	return `Local chain at block ${state.block.number}${age}`;
 }

@@ -209,9 +209,11 @@
 	 * At the demo resolution the scroller cuts entries mid-line; the fade says the text goes on.
 	 * The bottom pad keeps the last line clear of the fade once scrolled to the end, and the fade
 	 * drops while the region has keyboard focus, since the mask would also hide its outline.
+	 * No minimum height at this size: the scroller gives up room so the page itself never scrolls.
 	 */
 	@media (min-width: 1101px) {
 		.scroll {
+			min-height: 0;
 			padding-bottom: 24px;
 			mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
 		}

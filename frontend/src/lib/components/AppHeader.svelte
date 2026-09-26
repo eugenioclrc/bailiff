@@ -67,6 +67,13 @@
 		color: var(--color-ink);
 	}
 
+	/* At the demo size each item wraps whole, never mid-phrase, if the row ever runs out of room. */
+	@media (min-width: 1101px) {
+		.env > * {
+			white-space: nowrap;
+		}
+	}
+
 	.chip {
 		padding: 1px 8px;
 		border-radius: 3px;
@@ -82,9 +89,12 @@
 		flex-shrink: 0;
 	}
 
-	/* A fixed slot two lines tall: the header keeps its height when the NAV age gains a digit. */
+	/*
+	 * A fixed slot two lines tall: the header keeps its height when the NAV age gains a digit.
+	 * 200px, not wider, so the environment row beside it stays on one line at 1280.
+	 */
 	.sync {
-		flex: 0 0 240px;
+		flex: 0 0 200px;
 		min-height: 2lh;
 		font-size: 12px;
 		color: var(--color-ink-2);
