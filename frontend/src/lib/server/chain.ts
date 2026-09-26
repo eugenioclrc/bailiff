@@ -20,6 +20,7 @@ import { specOnlyFunctions } from '../abis.generated';
 import { decodeRevert, extractRevertData } from '../errors';
 import type { DecodedRevert } from '../types';
 import { MULTICALL3, type DemoContext, type Role } from './context';
+import { HttpFailure, describeForLog } from './guards';
 
 const RECEIPT_TIMEOUT_MS = 60_000;
 const SPEC_ONLY_SELECTORS = new Set(specOnlyFunctions.map((entry) => entry.slice(0, 10)));
@@ -78,11 +79,22 @@ export async function sendAndWait(
 		to,
 		data
 	});
-	const receipt = await ctx.client.waitForTransactionReceipt({
-		hash,
-		timeout: RECEIPT_TIMEOUT_MS,
-		pollingInterval: 250
-	});
+	// From here on the transaction exists: a failed wait must not lose its hash.
+	let receipt: TransactionReceipt;
+	try {
+		receipt = await ctx.client.waitForTransactionReceipt({
+			hash,
+			timeout: RECEIPT_TIMEOUT_MS,
+			pollingInterval: 250
+		});
+	} catch (err) {
+		console.error(`[bailiff] receipt wait for ${hash}: ${describeForLog(err)}`);
+		throw new HttpFailure(
+			502,
+			`Sent ${hash} but no receipt arrived; check it on Anvil before retrying.`,
+			{ txHash: hash }
+		);
+	}
 	return { hash, receipt };
 }
 

@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ActionResponse, ChainState } from '../types';
 import { fakeContext } from './context.test-helpers';
-import { evidencePath, recordEvidence } from './evidence';
+import { recordEvidence, recordFailure } from './evidence';
+import { HttpFailure } from './guards';
 
 let dir: string;
 beforeEach(() => (dir = mkdtempSync(join(tmpdir(), 'bailiff-evidence-'))));
@@ -27,8 +28,8 @@ const reset: ActionResponse = {
 	}
 };
 
-function lines(snapshotFile: string) {
-	return readFileSync(evidencePath(snapshotFile), 'utf8')
+function lines(evidenceFile: string) {
+	return readFileSync(evidenceFile, 'utf8')
 		.trim()
 		.split('\n')
 		.map((l) => JSON.parse(l));
@@ -36,11 +37,11 @@ function lines(snapshotFile: string) {
 
 describe('recordEvidence', () => {
 	test('appends the action, and after a reset a branch header with the baseline', async () => {
-		const snapshotFile = join(dir, 'anvil-snapshot.json');
-		const { ctx } = fakeContext({ config: { snapshotFile } });
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
 		await recordEvidence(ctx, '0xe', 'crash', mined, async () => ({}) as ChainState);
 		await recordEvidence(ctx, '0xe', 'reset', reset, async () => ({ poolId: 'p' }) as ChainState);
-		const [crash, resetLine, header] = lines(snapshotFile);
+		const [crash, resetLine, header] = lines(evidenceFile);
 		expect(crash).toMatchObject({ kind: 'action', branch: '0xe', action: 'crash' });
 		expect(crash.response.txHash).toBe(mined.txHash);
 		expect(resetLine).toMatchObject({ kind: 'action', action: 'reset', branch: '0xe' });
@@ -54,25 +55,91 @@ describe('recordEvidence', () => {
 			sourceCommit: ctx.manifest.sourceCommit,
 			baseline: { poolId: 'p' }
 		});
-		expect(statSync(evidencePath(snapshotFile)).mode & 0o777).toBe(0o600);
+		expect(header.blockNumber).toBe('11782760');
+		expect(statSync(evidenceFile).mode & 0o777).toBe(0o600);
 	});
 
 	test('a failed baseline read still writes the header, with the reason', async () => {
-		const snapshotFile = join(dir, 'anvil-snapshot.json');
-		const { ctx } = fakeContext({ config: { snapshotFile } });
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
 		await recordEvidence(ctx, '0xe', 'reset', reset, () => Promise.reject(new Error('rpc down')));
-		const header = lines(snapshotFile)[1];
+		const header = lines(evidenceFile)[1];
 		expect(header.baseline).toBeNull();
 		expect(header.baselineError).toContain('rpc down');
 	});
 
 	test('a write failure is logged, never thrown', async () => {
-		const { ctx } = fakeContext({ config: { snapshotFile: join(dir, 'missing', 'x.json') } });
+		const { ctx } = fakeContext({ config: { evidenceFile: join(dir, 'missing', 'x.jsonl') } });
 		const log = spyOn(console, 'error').mockImplementation(() => {});
 		await expect(
 			recordEvidence(ctx, null, 'crash', mined, async () => ({}) as ChainState)
 		).resolves.toBeUndefined();
 		expect(log).toHaveBeenCalledTimes(1);
 		log.mockRestore();
+	});
+
+	test('a reset that reverted the chain and then failed gets an action line and a branch header', async () => {
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
+		const failure = new HttpFailure(
+			500,
+			'The chain is back at the baseline, but evm_snapshot returned no id. Redeploy before the next reset.',
+			{ chainReset: true }
+		);
+		await recordFailure(ctx, '0xe', 'reset', failure, async () => ({ poolId: 'p' }) as ChainState);
+		const [action, header] = lines(evidenceFile);
+		expect(action).toMatchObject({
+			kind: 'action',
+			branch: '0xe',
+			action: 'reset',
+			response: { status: 'http-error', httpStatus: 500, chainReset: true }
+		});
+		expect(action.response.message).toContain('evm_snapshot returned no id');
+		expect(header).toMatchObject({
+			kind: 'branch',
+			note: 'local Anvil reset, not a transaction',
+			revertedTo: '0xe',
+			snapshotId: null,
+			baseline: { poolId: 'p' }
+		});
+	});
+
+	test('a snapshot taken but not saved keeps its id in the header', async () => {
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
+		const failure = new HttpFailure(500, 'SNAPSHOT_FILE could not be written.', {
+			chainReset: true,
+			snapshotId: '0x10'
+		});
+		await recordFailure(ctx, '0xe', 'reset', failure, async () => ({}) as ChainState);
+		expect(lines(evidenceFile)[1]).toMatchObject({ revertedTo: '0xe', snapshotId: '0x10' });
+	});
+
+	test('a refused reset (evm_revert false) is one action line, with no branch header', async () => {
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
+		let reads = 0;
+		const failure = new HttpFailure(409, 'evm_revert(0xe) returned false');
+		await recordFailure(ctx, '0xe', 'reset', failure, async () => {
+			reads += 1;
+			return {} as ChainState;
+		});
+		const written = lines(evidenceFile);
+		expect(written).toHaveLength(1);
+		expect(written[0].response).toEqual({
+			status: 'http-error',
+			httpStatus: 409,
+			message: 'evm_revert(0xe) returned false'
+		});
+		expect(reads).toBe(0);
+	});
+
+	test('a lost receipt keeps the transaction hash in the evidence', async () => {
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
+		const hash = `0x${'cd'.repeat(32)}`;
+		const failure = new HttpFailure(502, `Sent ${hash} but no receipt arrived.`, { txHash: hash });
+		await recordFailure(ctx, '0xe', 'liquidateFull', failure, async () => ({}) as ChainState);
+		expect(lines(evidenceFile)[0].response).toMatchObject({ httpStatus: 502, txHash: hash });
 	});
 });

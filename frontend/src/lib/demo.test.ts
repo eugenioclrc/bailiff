@@ -139,6 +139,17 @@ describe('Demo', () => {
 		expect(demo.actionError?.action).toBe('revoke');
 	});
 
+	test('a lost receipt keeps the sent hash in the action error', async () => {
+		const demo = new Demo();
+		await demo.refresh();
+		const hash = `0x${'cd'.repeat(32)}`;
+		actionReplies.push({ status: 502, body: { message: 'No receipt arrived.', txHash: hash } });
+		await demo.run('liquidateFull');
+		expect(demo.actionError).toMatchObject({ action: 'liquidateFull', txHash: hash });
+		expect(demo.actionError?.message).toBe(`No receipt arrived. Transaction ${hash}.`);
+		expect(demo.timeline).toEqual([]);
+	});
+
 	test('an unreachable server is an action error, not a timeline entry', async () => {
 		const demo = new Demo();
 		await demo.refresh();

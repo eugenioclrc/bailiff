@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import {
 	ContractFunctionRevertedError,
 	HttpRequestError,
@@ -9,8 +9,11 @@ import {
 	type Hex
 } from 'viem';
 import { errorsAbi, miniLendAbi } from '../abis.generated';
-import { isRevertError, readMany, revertOf, simulate } from './chain';
+import { runAction } from './actions';
+import { isRevertError, readMany, revertOf, sendAndWait, simulate } from './chain';
 import { fakeContext } from './context.test-helpers';
+import { HttpFailure } from './guards';
+import { fail } from './respond';
 
 const { ctx } = fakeContext();
 const MARKET = ctx.manifest.market;
@@ -117,5 +120,39 @@ describe('readMany', () => {
 		});
 		const r = await readMany(fake.ctx, calls, 100n);
 		expect(r.nav.ok).toBe(false);
+	});
+});
+
+describe('sendAndWait', () => {
+	const TX = `0x${'ab'.repeat(32)}`;
+
+	test('a receipt wait that fails after the send is a 502 whose body keeps the hash', async () => {
+		const fake = fakeContext({ receiptError: new Error('WaitForTransactionReceiptTimeoutError') });
+		const log = spyOn(console, 'error').mockImplementation(() => {});
+		let caught: unknown;
+		try {
+			await sendAndWait(fake.ctx, 'issuer', MARKET, '0x');
+		} catch (err) {
+			caught = err;
+		}
+		expect(caught).toBeInstanceOf(HttpFailure);
+		expect(fake.sent).toHaveLength(1);
+		const res = fail(caught, 'test');
+		expect(res.status).toBe(502);
+		const body = (await res.json()) as { txHash?: string; message: string };
+		expect(body.txHash).toBe(TX);
+		expect(body.message).toContain(TX);
+		expect(body.message).toContain('check it on Anvil before retrying');
+		log.mockRestore();
+	});
+
+	test('through an action, the lost receipt surfaces as that 502, not as a revert', async () => {
+		const fake = fakeContext({ receiptError: new Error('socket hang up') });
+		const log = spyOn(console, 'error').mockImplementation(() => {});
+		await expect(runAction(fake.ctx, 'crash')).rejects.toMatchObject({
+			status: 502,
+			extra: { txHash: TX }
+		});
+		log.mockRestore();
 	});
 });

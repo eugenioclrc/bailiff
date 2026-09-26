@@ -21,7 +21,9 @@ export type { TimelineItem } from './timeline';
 
 const SESSION_KEY = 'bailiff.timeline';
 
-type ErrorBody = { message?: unknown; chainReset?: unknown };
+type ErrorBody = { message?: unknown; chainReset?: unknown; txHash?: unknown };
+
+const TX_HASH = /^0x[0-9a-fA-F]{64}$/;
 
 async function readJson(res: Response): Promise<unknown> {
 	try {
@@ -62,7 +64,7 @@ export class Demo {
 	loading = $state(false);
 	loadError = $state<string | null>(null);
 	pending = $state<ControlName | null>(null);
-	actionError = $state<{ action: ControlName; message: string } | null>(null);
+	actionError = $state<{ action: ControlName; message: string; txHash?: string } | null>(null);
 	timeline = $state.raw<TimelineItem[]>([]);
 	/** Branches discarded by a local reset, newest first. */
 	archive = $state.raw<ArchivedBranch[]>([]);
@@ -145,11 +147,18 @@ export class Demo {
 	}
 
 	#onActionFailure(action: ActionName, body: unknown, status: number): void {
-		const message = messageOf(body, status);
-		this.actionError = { action, message };
+		const error = body as ErrorBody | null;
+		const txHash =
+			typeof error?.txHash === 'string' && TX_HASH.test(error.txHash) ? error.txHash : undefined;
+		const base = messageOf(body, status);
+		// A sent transaction whose receipt never arrived: the hash must stay on screen.
+		const message = txHash && !base.includes(txHash) ? `${base} Transaction ${txHash}.` : base;
+		this.actionError = { action, message, ...(txHash ? { txHash } : {}) };
 		this.announcement = message;
+		// It may have mined: the numbers on screen are no longer known to be current.
+		if (txHash) this.stale = true;
 		// The revert happened even though the snapshot bookkeeping failed: the old branch is gone.
-		if (action === 'reset' && (body as ErrorBody | null)?.chainReset === true) {
+		if (action === 'reset' && error?.chainReset === true) {
 			this.#closeBranch('local reset; snapshot bookkeeping failed');
 			this.#branch = null;
 			this.branchNotice = message;

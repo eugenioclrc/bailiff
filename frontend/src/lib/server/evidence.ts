@@ -1,19 +1,25 @@
 /**
  * O4 evidence: each action outcome, and a header for each branch opened by a local reset, is
- * appended to evidence.jsonl next to SNAPSHOT_FILE. Receipts and reconciliations of a discarded
- * branch therefore survive the reset and a page reload. Only public chain data is written.
+ * appended to EVIDENCE_FILE. Receipts and reconciliations of a discarded branch therefore survive
+ * the reset and a page reload. Failed actions are recorded too: a reset that reverted the chain
+ * but then failed, or a transaction whose receipt never arrived, still changed the chain.
+ * Only public chain data is written.
  */
 import { appendFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import type { ActionName, ActionResponse, ChainState } from '../types';
 import type { DemoContext } from './context';
-import { describeForLog } from './guards';
+import { describeForLog, type HttpFailure } from './guards';
 
-export const EVIDENCE_FILE = 'evidence.jsonl';
-
-export function evidencePath(snapshotFile: string): string {
-	return join(dirname(snapshotFile), EVIDENCE_FILE);
-}
+/** An action that ended as an HTTP error instead of an O5 status. */
+export type FailedResponse = {
+	status: 'http-error';
+	httpStatus: number;
+	message: string;
+	/** The local revert happened before the failure: the previous branch is gone. */
+	chainReset?: boolean;
+	/** A transaction was sent, so it may have mined even though the action failed. */
+	txHash?: string;
+};
 
 export type ActionLine = {
 	kind: 'action';
@@ -21,30 +27,36 @@ export type ActionLine = {
 	/** Snapshot id of the branch the action ran on (before a reset, the discarded one). */
 	branch: string | null;
 	action: ActionName;
-	response: ActionResponse;
+	response: ActionResponse | FailedResponse;
 };
 
-export type BranchLine = {
+/** Where a local reset left the chain. Unknown fields are null, never guessed. */
+export type BranchInfo = {
+	revertedTo: string | null;
+	snapshotId: string | null;
+	blockNumber: string | null;
+	blockTimestamp: string | null;
+};
+
+export type BranchLine = BranchInfo & {
 	kind: 'branch';
 	at: string;
 	note: 'local Anvil reset, not a transaction';
-	revertedTo: string | null;
-	snapshotId: string | null;
 	sourceCommit: string;
 	chainId: number;
 	forkBlock: string;
 	forkBlockHash: string;
-	blockNumber: string | null;
-	blockTimestamp: string | null;
 	baseline: ChainState | null;
 	baselineError?: string;
 };
+
+type Line = ActionLine | BranchLine;
 
 export function actionLine(
 	at: string,
 	branch: string | null,
 	action: ActionName,
-	response: ActionResponse
+	response: ActionResponse | FailedResponse
 ): ActionLine {
 	return { kind: 'action', at, branch, action, response };
 }
@@ -52,41 +64,68 @@ export function actionLine(
 export function branchLine(
 	ctx: Pick<DemoContext, 'manifest'>,
 	at: string,
-	response: ActionResponse,
+	info: BranchInfo,
 	baseline: ChainState | null,
 	baselineError?: string
 ): BranchLine {
-	const reset = response.detail.reset;
 	const m = ctx.manifest;
 	return {
 		kind: 'branch',
 		at,
 		note: 'local Anvil reset, not a transaction',
-		revertedTo: reset?.revertedTo ?? null,
-		snapshotId: response.snapshotId ?? null,
+		...info,
 		sourceCommit: m.sourceCommit,
 		chainId: m.chainId,
 		forkBlock: m.forkBlock,
 		forkBlockHash: m.forkBlockHash,
-		blockNumber: reset?.blockNumber ?? null,
-		blockTimestamp: reset?.blockTimestamp ?? null,
 		baseline,
 		...(baselineError ? { baselineError } : {})
 	};
 }
 
-export async function appendEvidence(
-	path: string,
-	lines: readonly (ActionLine | BranchLine)[]
-): Promise<void> {
+export function failedResponse(failure: HttpFailure): FailedResponse {
+	const { chainReset, txHash } = failure.extra;
+	return {
+		status: 'http-error',
+		httpStatus: failure.status,
+		message: failure.message,
+		...(chainReset === true ? { chainReset: true } : {}),
+		...(typeof txHash === 'string' ? { txHash } : {})
+	};
+}
+
+export async function appendEvidence(path: string, lines: readonly Line[]): Promise<void> {
 	const text = lines.map((line) => JSON.stringify(line)).join('\n');
 	await appendFile(path, `${text}\n`, { mode: 0o600 });
 }
 
+/** The new branch's header; a failed baseline read is recorded with its reason, not dropped. */
+async function headerWithBaseline(
+	ctx: DemoContext,
+	at: string,
+	info: BranchInfo,
+	readBaseline: () => Promise<ChainState>
+): Promise<BranchLine> {
+	try {
+		return branchLine(ctx, at, info, await readBaseline());
+	} catch (err) {
+		return branchLine(ctx, at, info, null, describeForLog(err));
+	}
+}
+
 /**
- * Records one action and, after a reset, the new branch's baseline. Never throws: the action has
- * already happened, so a failed write is logged and the response still goes back to the page.
+ * Never throws: the action has already happened, so a failed write is logged and the response
+ * still goes back to the page.
  */
+async function write(ctx: DemoContext, action: ActionName, lines: () => Promise<Line[]>) {
+	try {
+		await appendEvidence(ctx.config.evidenceFile, await lines());
+	} catch (err) {
+		console.error(`[bailiff] evidence not written for ${action}: ${describeForLog(err)}`);
+	}
+}
+
+/** Records one action and, after a reset, the new branch's baseline. */
 export async function recordEvidence(
 	ctx: DemoContext,
 	branch: string | null,
@@ -95,17 +134,47 @@ export async function recordEvidence(
 	readBaseline: () => Promise<ChainState>
 ): Promise<void> {
 	const at = new Date().toISOString();
-	try {
-		const lines: (ActionLine | BranchLine)[] = [actionLine(at, branch, action, response)];
+	await write(ctx, action, async () => {
+		const lines: Line[] = [actionLine(at, branch, action, response)];
+		const reset = response.detail.reset;
 		if (response.status === 'reset') {
-			try {
-				lines.push(branchLine(ctx, at, response, await readBaseline()));
-			} catch (err) {
-				lines.push(branchLine(ctx, at, response, null, describeForLog(err)));
-			}
+			const info: BranchInfo = {
+				revertedTo: reset?.revertedTo ?? null,
+				snapshotId: response.snapshotId ?? null,
+				blockNumber: reset?.blockNumber ?? null,
+				blockTimestamp: reset?.blockTimestamp ?? null
+			};
+			lines.push(await headerWithBaseline(ctx, at, info, readBaseline));
 		}
-		await appendEvidence(evidencePath(ctx.config.snapshotFile), lines);
-	} catch (err) {
-		console.error(`[bailiff] evidence not written for ${action}: ${describeForLog(err)}`);
-	}
+		return lines;
+	});
+}
+
+/**
+ * Records an action that ended as an HTTP error. When the failure says the chain was already
+ * reverted (chainReset), the branch it opened gets a header too, with whatever snapshot id the
+ * failure carries (null when evm_snapshot gave none).
+ */
+export async function recordFailure(
+	ctx: DemoContext,
+	branch: string | null,
+	action: ActionName,
+	failure: HttpFailure,
+	readBaseline: () => Promise<ChainState>
+): Promise<void> {
+	const at = new Date().toISOString();
+	await write(ctx, action, async () => {
+		const lines: Line[] = [actionLine(at, branch, action, failedResponse(failure))];
+		if (failure.extra.chainReset === true) {
+			const snapshotId = failure.extra.snapshotId;
+			const info: BranchInfo = {
+				revertedTo: branch,
+				snapshotId: typeof snapshotId === 'string' ? snapshotId : null,
+				blockNumber: null,
+				blockTimestamp: null
+			};
+			lines.push(await headerWithBaseline(ctx, at, info, readBaseline));
+		}
+		return lines;
+	});
 }
