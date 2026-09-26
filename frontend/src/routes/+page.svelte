@@ -46,13 +46,13 @@
 
 	<!-- Only chain figures dim while a refresh is due; the timeline's receipts are already final. -->
 	<main class="board">
-		<div class="roles" data-stale={demo.stale} aria-busy={demo.stale}>
+		<div class="roles" data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
 			<IssuerPanel {demo} />
 			<MakerPanel {demo} />
 			<KeeperPanel {demo} />
 			<BorrowerCard {demo} />
 		</div>
-		<div data-stale={demo.stale} aria-busy={demo.stale}>
+		<div data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
 			<MarketBand {demo} />
 		</div>
 		<Timeline {demo} />

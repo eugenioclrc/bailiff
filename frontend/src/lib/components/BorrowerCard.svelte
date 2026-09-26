@@ -50,6 +50,7 @@
 	address={s?.addresses.borrower}
 	blurb="Posted RWA collateral. No key on this server."
 	loaded={s !== null}
+	failed={demo.loadError !== null}
 >
 	<div class="health" data-status={status}>
 		<dt>Health factor</dt>

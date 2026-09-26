@@ -4,12 +4,14 @@ import {
 	argUnit,
 	emitterName,
 	healthStatus,
+	showBool,
 	showFlags,
 	showRead,
 	probeStatusLabel,
 	probeSummary,
 	statusLabel,
-	summarize
+	summarize,
+	syncText
 } from './view';
 
 const ok = (value: string): ReadValue => ({ ok: true, value });
@@ -29,12 +31,42 @@ describe('showRead', () => {
 		expect(showRead(ok('75000000000'), 'usdc')).toEqual({ text: '75,000.00', tone: 'value' });
 		expect(showRead(missing, 'usdc')).toEqual({ text: 'not implemented yet', tone: 'missing' });
 		expect(showRead(failed, 'usdc')).toEqual({ text: 'read failed', tone: 'failed' });
-		expect(showRead(undefined, 'usdc').tone).toBe('failed');
+	});
+
+	test('a value not read yet is not reported as a failed read', () => {
+		const notRead = { text: 'not read yet', tone: 'missing' };
+		expect(showRead(undefined, 'usdc')).toEqual(notRead);
+		expect(showFlags(undefined)).toEqual(notRead);
+		expect(showBool(undefined, 'yes', 'no')).toEqual(notRead);
 	});
 
 	test('flags read as names', () => {
 		expect(showFlags({ ok: true, value: 0x8003 }).text).toBe('HOLDER, SWAP, LIQUIDITY');
 		expect(showFlags({ ok: true, value: 0 }).text).toBe('NONE');
+	});
+});
+
+describe('syncText', () => {
+	const state = {
+		block: { number: '11782757' },
+		navStatus: { ageSeconds: '162' }
+	} as unknown as Parameters<typeof syncText>[0];
+
+	test('names the local chain, not a live network', () => {
+		expect(syncText(state, false, null)).toBe('Local chain at block 11782757, NAV set 2m 42s ago');
+	});
+
+	test('a failed read wins over a pending refresh, so the header never waits forever', () => {
+		expect(syncText(state, true, 'down')).toBe(
+			'Read failed after the last action: figures predate it'
+		);
+		expect(syncText(state, false, 'down')).toBe('Last good read at local block 11782757');
+		expect(syncText(state, true, null)).toBe('Updating after the last action…');
+	});
+
+	test('before the first read it says whether the read is running or failed', () => {
+		expect(syncText(null, false, null)).toBe('Reading chain state…');
+		expect(syncText(null, false, 'down')).toBe('No chain state yet');
 	});
 });
 

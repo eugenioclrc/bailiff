@@ -32,6 +32,7 @@
 	address={s?.addresses.mm}
 	blurb="Team-run and KYC'd; the only LP. All pool liquidity is its own."
 	loaded={s !== null}
+	failed={demo.loadError !== null}
 >
 	<Figure
 		label="Pool liquidity L"

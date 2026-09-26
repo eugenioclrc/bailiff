@@ -26,6 +26,7 @@
 	address={s?.addresses.issuer}
 	blurb="Owns the pool wrapper and the NAV oracle; provides no liquidity."
 	loaded={s !== null}
+	failed={demo.loadError !== null}
 >
 	<Figure
 		label="NAV, USDC per RWA"

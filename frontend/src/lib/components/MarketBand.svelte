@@ -2,14 +2,24 @@
 	import type { Demo } from '$lib/demo.svelte';
 	import { formatUnit } from '$lib/format';
 	import type { HolderKey } from '$lib/types';
-	import { holderOf, showRead } from '$lib/view';
+	import { holderOf, showRead, type Shown } from '$lib/view';
 
 	let { demo }: { demo: Demo } = $props();
 
 	let s = $derived(demo.state);
 	let nav = $derived(showRead(s?.market.nav, 'wad'));
-	let floor = $derived(s?.navStatus.floor ? formatUnit(s.navStatus.floor, 'wad') : '—');
-	let spot = $derived(s?.pool.spot ? formatUnit(s.pool.spot, 'wad') : '—');
+	const NOT_READ: Shown = { text: 'not read yet', tone: 'missing' };
+	let floor = $derived<Shown>(
+		s?.navStatus.floor ? { text: formatUnit(s.navStatus.floor, 'wad'), tone: 'value' } : NOT_READ
+	);
+	let spot = $derived<Shown>(
+		s?.pool.spot ? { text: formatUnit(s.pool.spot, 'wad'), tone: 'value' } : NOT_READ
+	);
+	let noState = $derived(
+		demo.loadError
+			? 'No chain state: the read failed, see the message above.'
+			: 'Reading chain state…'
+	);
 	let floorPercent = $derived(s ? `${s.navFloorBps / 100}%` : '99%');
 	let floorEnforced = $derived(s?.adapterNavFloorBps.ok === true);
 
@@ -52,59 +62,70 @@
 <section class="band" aria-label="Prices and RWA custody">
 	<div class="prices">
 		<h2>Prices, USDC per RWA</h2>
-		<dl>
-			<div>
-				<dt>NAV</dt>
-				<dd class={{ num: nav.tone === 'value' }}>{nav.text}</dd>
-			</div>
-			<div>
-				<dt>NAV floor, {floorPercent}</dt>
-				<dd class="num">{floor}</dd>
-			</div>
-			<div>
-				<dt>Pool spot</dt>
-				<dd class="num">{spot}</dd>
-			</div>
-		</dl>
-		<p class="note">{floorNote}</p>
-		<p class="totals">
-			{#each totals as total, i (total.label)}
-				{i > 0 ? '; ' : ''}{total.label}
-				<span class={[total.shown.tone, { num: total.shown.tone === 'value' }]}
-					>{total.shown.text}</span
-				>
-			{/each}
-		</p>
+		{#if s}
+			<dl>
+				<div>
+					<dt>NAV</dt>
+					<dd class={[nav.tone, { num: nav.tone === 'value' }]}>{nav.text}</dd>
+				</div>
+				<div>
+					<dt>NAV floor, {floorPercent}</dt>
+					<dd class={[floor.tone, { num: floor.tone === 'value' }]}>{floor.text}</dd>
+				</div>
+				<div>
+					<dt>Pool spot</dt>
+					<dd class={[spot.tone, { num: spot.tone === 'value' }]}>{spot.text}</dd>
+				</div>
+			</dl>
+			<p class="note">{floorNote}</p>
+			<p class="totals">
+				{#each totals as total, i (total.label)}
+					{i > 0 ? '; ' : ''}{total.label}
+					<span class={[total.shown.tone, { num: total.shown.tone === 'value' }]}
+						>{total.shown.text}</span
+					>
+				{/each}
+			</p>
+		{:else}
+			<p class="note" role="status">{noState}</p>
+		{/if}
 	</div>
 
 	<div class="custody">
 		<h2>Who holds the RWA</h2>
-		<ol class="path" aria-label="Liquidation path of seized RWA">
-			{#each PATH as stop (stop.key)}
-				{@const shown = rwaOf(stop.key)}
-				<li>
-					<span class="name">{stop.name}</span>
-					<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
-						>{shown.text}</span
-					>
-					<span class="role">{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
-					>
-				</li>
-			{/each}
-		</ol>
-		<ul class="outside">
-			{#each OUTSIDE as stop (stop.key)}
-				{@const shown = rwaOf(stop.key)}
-				<li>
-					<span class="name">{stop.name}</span>
-					<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
-						>{shown.text}</span
-					>
-					<span class="role">{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
-					>
-				</li>
-			{/each}
-		</ul>
+		{#if s}
+			<ol class="path" aria-label="Liquidation path of seized RWA">
+				{#each PATH as stop (stop.key)}
+					{@const shown = rwaOf(stop.key)}
+					<li>
+						<span class="name">{stop.name}</span>
+						<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
+							>{shown.text}</span
+						>
+						<span class="role"
+							>{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
+						>
+					</li>
+				{/each}
+			</ol>
+			<ul class="outside">
+				{#each OUTSIDE as stop (stop.key)}
+					{@const shown = rwaOf(stop.key)}
+					<li>
+						<span class="name">{stop.name}</span>
+						<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
+							>{shown.text}</span
+						>
+						<span class="role"
+							>{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
+						>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<!-- Same words as the status line in the prices half; announced once, from there. -->
+			<p class="waiting">{noState}</p>
+		{/if}
 	</div>
 </section>
 
@@ -145,6 +166,20 @@
 	.prices dd {
 		font-size: 22px;
 		line-height: 1.05;
+	}
+
+	.prices dd.missing,
+	.prices dd.failed {
+		font-size: 13px;
+		font-style: italic;
+	}
+
+	.prices dd.missing {
+		color: var(--color-caution);
+	}
+
+	.prices dd.failed {
+		color: var(--color-alert);
 	}
 
 	.note {
@@ -252,6 +287,11 @@
 	.role {
 		font-size: 11px;
 		opacity: 0.75;
+	}
+
+	.waiting {
+		grid-column: 1 / -1;
+		font-size: 12px;
 	}
 
 	@media (max-width: 1100px) {

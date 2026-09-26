@@ -57,6 +57,7 @@
 	address={s?.addresses.keeper}
 	blurb="Anyone can run it: no KYC flags, no USDC, no RWA."
 	loaded={s !== null}
+	failed={demo.loadError !== null}
 >
 	<Figure label="USDC balance" shown={showRead(keeper?.usdc, 'usdc')} unit="USDC" />
 	<Figure

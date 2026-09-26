@@ -1,20 +1,12 @@
 <script lang="ts">
 	import type { Demo } from '$lib/demo.svelte';
-	import { formatDuration } from '$lib/format';
+	import { syncText } from '$lib/view';
 	import ActionButton from './ActionButton.svelte';
 
 	let { demo }: { demo: Demo } = $props();
 
 	let s = $derived(demo.state);
-	let sync = $derived.by(() => {
-		if (!s) return demo.loadError ? 'No chain state yet' : 'Reading chain state…';
-		if (demo.stale) return 'Updating after the last action…';
-		if (demo.loadError) return `Last good read at block ${s.block.number}`;
-		const age = s.navStatus.ageSeconds
-			? `, NAV set ${formatDuration(BigInt(s.navStatus.ageSeconds))} ago`
-			: '';
-		return `Live at block ${s.block.number}${age}`;
-	});
+	let sync = $derived(syncText(s, demo.stale, demo.loadError));
 </script>
 
 <header class="top">

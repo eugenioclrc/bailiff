@@ -74,7 +74,7 @@
 			{#each reconciliation.checks as check (check.id)}
 				<li class={check.ok === null ? 'na' : check.ok ? 'ok' : 'bad'}>
 					<span class="mark" aria-hidden="true"
-						>{check.ok === null ? '–' : check.ok ? '✓' : '✗'}</span
+						>{check.ok === null ? 'n/a' : check.ok ? '✓' : '✗'}</span
 					>
 					<span class="visually-hidden"
 						>{check.ok === null ? 'Not applicable' : check.ok ? 'Agrees' : 'Disagrees'}:</span
@@ -137,9 +137,11 @@
 		font-size: 11.5px;
 	}
 
+	/* "n/a" is wider than a check glyph: a minimum keeps the labels aligned without clipping it. */
 	.mark {
 		display: inline-block;
-		width: 1em;
+		min-width: 1em;
+		margin-right: 0.2em;
 		font-weight: 700;
 	}
 

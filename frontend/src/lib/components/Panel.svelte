@@ -7,11 +7,13 @@
 		address?: string;
 		blurb: string;
 		loaded: boolean;
+		/** The last read failed: say so instead of claiming a read is still running. */
+		failed: boolean;
 		children: Snippet;
 		actions?: Snippet;
 	};
 
-	let { title, address, blurb, loaded, children, actions }: Props = $props();
+	let { title, address, blurb, loaded, failed, children, actions }: Props = $props();
 	const uid = $props.id();
 </script>
 
@@ -26,7 +28,9 @@
 	{#if loaded}
 		<dl class="figures">{@render children()}</dl>
 	{:else}
-		<p class="loading" role="status">Reading chain state…</p>
+		<p class="loading" role="status">
+			{failed ? 'No chain state: the read failed, see the message above.' : 'Reading chain state…'}
+		</p>
 	{/if}
 	{#if actions}
 		<div class="actions">{@render actions()}</div>
