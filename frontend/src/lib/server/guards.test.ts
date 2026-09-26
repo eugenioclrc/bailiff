@@ -8,6 +8,7 @@ import {
 	assertLoopbackClient,
 	assertLoopbackHost,
 	assertNotCrossOrigin,
+	assertNotCrossSite,
 	assertSameOrigin,
 	isLoopbackClient,
 	readCappedBody,
@@ -104,12 +105,43 @@ describe('assertNotCrossOrigin', () => {
 	});
 });
 
+describe('assertNotCrossSite', () => {
+	test('same-origin, none and a missing header pass; cross-site and same-site are 403', () => {
+		for (const site of [null, 'same-origin', 'none']) {
+			expect(statusOf(() => assertNotCrossSite(site))).toBe(200);
+		}
+		for (const site of ['cross-site', 'same-site']) {
+			expect(statusOf(() => assertNotCrossSite(site))).toBe(403);
+		}
+	});
+});
+
 describe('readCappedBody', () => {
 	const url = 'http://127.0.0.1:5173/api/action';
 
+	const post = (body: string, headers: Record<string, string> = {}) =>
+		new Request(url, { method: 'POST', body, headers });
+
 	test('reads a small body', async () => {
 		const body = '{"action":"crash"}';
-		expect(await readCappedBody(new Request(url, { method: 'POST', body }))).toBe(body);
+		expect(await readCappedBody(post(body, { 'content-length': String(body.length) }))).toBe(body);
+	});
+
+	test('a body without Content-Length is 411, before anything is read', async () => {
+		const request = post('{"action":"crash"}');
+		await expect(readCappedBody(request)).rejects.toMatchObject({
+			status: 411,
+			message: 'Content-Length is required.'
+		});
+		expect(request.bodyUsed).toBe(false);
+	});
+
+	test('a malformed Content-Length is 400', async () => {
+		for (const length of ['abc', '-1', '1.5']) {
+			await expect(readCappedBody(post('{}', { 'content-length': length }))).rejects.toMatchObject({
+				status: 400
+			});
+		}
 	});
 
 	test('a declared length over the cap is refused before reading', async () => {
@@ -124,7 +156,7 @@ describe('readCappedBody', () => {
 		expect(request.bodyUsed).toBe(false);
 	});
 
-	test('a stream that grows past the cap is cancelled without buffering the rest', async () => {
+	test('a stream that grows past its declared length and the cap is cancelled', async () => {
 		let chunksServed = 0;
 		let cancelled = false;
 		const stream = new ReadableStream<Uint8Array>({
@@ -139,6 +171,7 @@ describe('readCappedBody', () => {
 		const request = new Request(url, {
 			method: 'POST',
 			body: stream,
+			headers: { 'content-length': '18' },
 			duplex: 'half'
 		} as RequestInit);
 		await expect(readCappedBody(request)).rejects.toMatchObject({ status: 413 });

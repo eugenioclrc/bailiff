@@ -69,4 +69,9 @@ describe('assertLocalAnvil', () => {
 		expect(message).toContain('adapter');
 		expect(message).toContain('O4');
 	});
+
+	test('a USDC address without code is refused, not read as a token with zero balances', async () => {
+		const message = await messageOf(assertLocalAnvil(probe({ noCodeAt: manifest.usdc }), manifest));
+		expect(message).toContain('usdc');
+	});
 });

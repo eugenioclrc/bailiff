@@ -11,6 +11,9 @@ type Init = {
 	body?: string;
 	client?: string;
 	host?: string;
+	/** Sent as Content-Length; defaults to the body's byte length, null leaves it out. */
+	contentLength?: string | null;
+	site?: string;
 };
 
 function event({
@@ -18,11 +21,15 @@ function event({
 	contentType = 'application/json',
 	body = '{"action":"crash"}',
 	client = '127.0.0.1',
-	host = '127.0.0.1:5173'
+	host = '127.0.0.1:5173',
+	contentLength = String(new TextEncoder().encode(body).length),
+	site
 }: Init) {
 	const url = new URL(`http://${host}/api/action`);
 	const headers = new Headers({ 'content-type': contentType });
 	if (origin) headers.set('origin', origin);
+	if (contentLength !== null) headers.set('content-length', contentLength);
+	if (site) headers.set('sec-fetch-site', site);
 	const request = new Request(url, { method: 'POST', headers, body });
 	return { request, url, getClientAddress: () => client } as unknown as Parameters<typeof POST>[0];
 }
@@ -59,6 +66,17 @@ describe('POST /api/action guards', () => {
 		expect((await post({ body: JSON.stringify({ action: 'x'.repeat(300) }) })).status).toBe(413);
 	});
 
+	test('a body without Content-Length (chunked) is a JSON 411', async () => {
+		const res = await post({ contentLength: null });
+		expect(res.status).toBe(411);
+		expect(res.body.message).toBe('Content-Length is required.');
+	});
+
+	test('a cross-site or same-site browser request is 403', async () => {
+		expect((await post({ site: 'cross-site' })).status).toBe(403);
+		expect((await post({ site: 'same-site' })).status).toBe(403);
+	});
+
 	test('a held lock is 409 before any RPC work', async () => {
 		const release = tryAcquire('liquidateFull')!;
 		try {
@@ -78,6 +96,14 @@ describe('POST /api/action guards', () => {
 });
 
 describe('GET /api/state guards', () => {
+	test('a cross-site no-cors GET without Origin is 403 before any RPC work', async () => {
+		const url = new URL('http://127.0.0.1:5173/api/state');
+		const request = new Request(url, { headers: { 'sec-fetch-site': 'cross-site' } });
+		const res = await GET({ request, url, getClientAddress: () => '127.0.0.1' } as never);
+		expect(res.status).toBe(403);
+		expect(((await res.json()) as { message: string }).message).toContain('Cross-site');
+	});
+
 	test('a foreign Origin or client is 403', async () => {
 		const url = new URL('http://127.0.0.1:5173/api/state');
 		const foreign = new Request(url, { headers: { origin: 'http://localhost:3000' } });

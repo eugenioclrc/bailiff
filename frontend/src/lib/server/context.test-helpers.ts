@@ -4,7 +4,7 @@
  */
 import type { Address, Hex, TransactionReceipt } from 'viem';
 import { logContext } from '../fixtures.test-helpers';
-import { parseManifest, type DemoConfig } from './config';
+import { parseManifest, type ContextConfig } from './config';
 import type { DemoContext, Role } from './context';
 
 export const MANIFEST_JSON = {
@@ -64,7 +64,9 @@ export type FakeOptions = {
 	send?: (tx: SentTx) => Promise<Hex>;
 	receipt?: Partial<TransactionReceipt>;
 	readContract?: () => Promise<unknown>;
-	config?: Partial<DemoConfig>;
+	config?: Partial<ContextConfig>;
+	/** When set, waitForTransactionReceipt rejects with it after the send returned a hash. */
+	receiptError?: unknown;
 };
 
 export type Fake = { ctx: DemoContext; calls: SimCall[]; sent: SentTx[]; requests: RpcCall[] };
@@ -85,13 +87,16 @@ export function fakeContext(options: FakeOptions = {}): Fake {
 			requests.push({ method, params });
 			return options.request ? options.request(method, params) : Promise.resolve(null);
 		},
-		waitForTransactionReceipt: async () => ({
-			status: 'success',
-			blockNumber: 100n,
-			gasUsed: 21_000n,
-			logs: [],
-			...options.receipt
-		}),
+		waitForTransactionReceipt: async () => {
+			if (options.receiptError !== undefined) throw options.receiptError;
+			return {
+				status: 'success',
+				blockNumber: 100n,
+				gasUsed: 21_000n,
+				logs: [],
+				...options.receipt
+			};
+		},
 		readContract: () =>
 			options.readContract
 				? options.readContract()
@@ -106,11 +111,11 @@ export function fakeContext(options: FakeOptions = {}): Fake {
 			return options.send ? options.send(tx) : Promise.resolve(TX_HASH);
 		}
 	});
-	const config: DemoConfig = {
+	const config: ContextConfig = {
 		rpcUrl: 'http://127.0.0.1:8545',
-		keys: { issuer: '0x01', mm: '0x02', keeper: '0x03' } as DemoConfig['keys'],
 		deploymentFile: '/tmp/bailiff-test/anvil.json',
 		snapshotFile: '/tmp/bailiff-test/anvil-snapshot.json',
+		evidenceFile: '/tmp/bailiff-test/evidence.jsonl',
 		...options.config
 	};
 	const ctx = {

@@ -23,6 +23,7 @@ import {
 	parseEnv,
 	parseManifest,
 	type AddressField,
+	type ContextConfig,
 	type DemoConfig,
 	type Manifest
 } from './config';
@@ -33,7 +34,8 @@ const RPC_TIMEOUT_MS = 20_000;
 export type Role = 'issuer' | 'mm' | 'keeper';
 
 export type DemoContext = {
-	config: DemoConfig;
+	/** Paths and RPC only. The keys never leave loadContext, so no log or response can carry them. */
+	config: ContextConfig;
 	manifest: Manifest;
 	chain: Chain;
 	client: PublicClient<Transport, Chain>;
@@ -100,6 +102,7 @@ const CODE_FIELDS = [
 	'market',
 	'adapter',
 	'rwa',
+	'usdc',
 	'pa',
 	'desk'
 ] as const satisfies readonly AddressField[];
@@ -183,5 +186,13 @@ export async function loadContext(): Promise<DemoContext> {
 		return createWalletClient({ account, chain, transport });
 	};
 	const wallets = { issuer: wallet('issuer'), mm: wallet('mm'), keeper: wallet('keeper') };
-	return { config, manifest, chain, client, wallets, logContext: buildLogContext(manifest) };
+	const { rpcUrl, deploymentFile, snapshotFile, evidenceFile } = config;
+	return {
+		config: { rpcUrl, deploymentFile, snapshotFile, evidenceFile },
+		manifest,
+		chain,
+		client,
+		wallets,
+		logContext: buildLogContext(manifest)
+	};
 }

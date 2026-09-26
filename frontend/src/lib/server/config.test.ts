@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	ConfigError,
+	isChecksumSafeAddress,
 	isLoopbackHttpUrl,
 	parseEnv,
 	parseManifest,
@@ -19,7 +20,8 @@ const goodEnv = {
 	MM_PK: KEY_B,
 	KEEPER_PK: KEY_C,
 	DEPLOYMENT_FILE: '/tmp/devenv/anvil.json',
-	SNAPSHOT_FILE: '/tmp/devenv/anvil-snapshot.json'
+	SNAPSHOT_FILE: '/tmp/devenv/anvil-snapshot.json',
+	EVIDENCE_FILE: '/tmp/devenv/evidence.jsonl'
 };
 
 function expectConfigError(fn: () => unknown, fragment: string) {
@@ -82,6 +84,19 @@ describe('parseEnv', () => {
 			'DEPLOYMENT_FILE'
 		);
 		expectConfigError(() => parseEnv({ ...goodEnv, SNAPSHOT_FILE: '/tmp/x.txt' }), 'SNAPSHOT_FILE');
+	});
+
+	test('EVIDENCE_FILE is a required absolute .jsonl path, never one of the .json files', () => {
+		expect(parseEnv(goodEnv).evidenceFile).toBe('/tmp/devenv/evidence.jsonl');
+		for (const value of [
+			undefined,
+			'evidence.jsonl',
+			'/tmp/devenv/evidence.json',
+			goodEnv.SNAPSHOT_FILE,
+			goodEnv.DEPLOYMENT_FILE
+		]) {
+			expectConfigError(() => parseEnv({ ...goodEnv, EVIDENCE_FILE: value }), 'EVIDENCE_FILE');
+		}
 	});
 });
 
@@ -147,6 +162,19 @@ describe('parseManifest', () => {
 	test('accepts lowercase addresses and checksums them', () => {
 		const parsed = parseManifest({ ...manifest, keeper: manifest.keeper.toLowerCase() });
 		expect(parsed.keeper).toBe(manifest.keeper);
+	});
+
+	test('a mixed-case address with a wrong checksum is refused; all-uppercase passes', () => {
+		// One letter's case flipped: still a valid hex address, but no longer the EIP-55 checksum.
+		const miscased = '0x51247e2291D290d17C08813A175AC86465EdE8c0';
+		expect(isChecksumSafeAddress(miscased)).toBe(false);
+		expectConfigError(
+			() => parseManifest({ ...manifest, hook: miscased, poolKey: { ...manifest.poolKey } }),
+			'hook'
+		);
+		const upper = `0x${manifest.keeper.slice(2).toUpperCase()}`;
+		expect(isChecksumSafeAddress(upper)).toBe(true);
+		expect(parseManifest({ ...manifest, keeper: upper }).keeper).toBe(manifest.keeper);
 	});
 
 	test('refuses anything but the local fork', () => {

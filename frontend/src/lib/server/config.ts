@@ -45,7 +45,12 @@ export type DemoConfig = {
 	keys: { issuer: Hex; mm: Hex; keeper: Hex };
 	deploymentFile: string;
 	snapshotFile: string;
+	/** Append-only O4 evidence log; kept outside contracts/ so nothing lands in that tree. */
+	evidenceFile: string;
 };
+
+/** What the request context keeps: the keys stay inside the viem accounts only. */
+export type ContextConfig = Omit<DemoConfig, 'keys'>;
 
 export type PoolKey = {
 	currency0: Address;
@@ -131,10 +136,14 @@ function requireKey(env: Record<string, string | undefined>, name: string): Hex 
 	return value as Hex;
 }
 
-function requireJsonPath(env: Record<string, string | undefined>, name: string): string {
+function requirePath(
+	env: Record<string, string | undefined>,
+	name: string,
+	extension: '.json' | '.jsonl'
+): string {
 	const value = env[name];
-	if (!value || !isAbsolute(value) || !value.endsWith('.json')) {
-		throw new ConfigError(`${name} must be an absolute path to a .json file.`);
+	if (!value || !isAbsolute(value) || !value.endsWith(extension)) {
+		throw new ConfigError(`${name} must be an absolute path to a ${extension} file.`);
 	}
 	return value;
 }
@@ -149,8 +158,10 @@ export function parseEnv(env: Record<string, string | undefined>): DemoConfig {
 	if (!isLoopbackHttpUrl(rpcUrl)) {
 		throw new ConfigError('ANVIL_RPC must be an http:// URL on 127.0.0.1, localhost or [::1].');
 	}
-	const deploymentFile = requireJsonPath(env, 'DEPLOYMENT_FILE');
-	const snapshotFile = requireJsonPath(env, 'SNAPSHOT_FILE');
+	const deploymentFile = requirePath(env, 'DEPLOYMENT_FILE', '.json');
+	const snapshotFile = requirePath(env, 'SNAPSHOT_FILE', '.json');
+	// The .jsonl extension alone keeps it apart from the two .json files.
+	const evidenceFile = requirePath(env, 'EVIDENCE_FILE', '.jsonl');
 	if (resolve(snapshotFile) === resolve(deploymentFile)) {
 		throw new ConfigError('SNAPSHOT_FILE must differ from DEPLOYMENT_FILE.');
 	}
@@ -162,7 +173,8 @@ export function parseEnv(env: Record<string, string | undefined>): DemoConfig {
 			keeper: requireKey(env, 'KEEPER_PK')
 		},
 		deploymentFile,
-		snapshotFile
+		snapshotFile,
+		evidenceFile
 	};
 }
 
@@ -173,10 +185,20 @@ function asRecord(json: unknown, what: string): Record<string, unknown> {
 	return json as Record<string, unknown>;
 }
 
+/**
+ * EIP-55: an all-lowercase or all-uppercase address carries no checksum; a mixed-case one must
+ * match it. viem's strict mode would also refuse the all-uppercase form, so this is spelled out.
+ */
+export function isChecksumSafeAddress(value: string): boolean {
+	if (!isAddress(value, { strict: false })) return false;
+	const body = value.slice(2);
+	return body === body.toLowerCase() || body === body.toUpperCase() || getAddress(value) === value;
+}
+
 function address(obj: Record<string, unknown>, field: string, prefix = ''): Address {
 	const value = obj[field];
-	if (typeof value !== 'string' || !isAddress(value, { strict: false })) {
-		throw new ConfigError(`manifest ${prefix}${field} must be an address.`);
+	if (typeof value !== 'string' || !isChecksumSafeAddress(value)) {
+		throw new ConfigError(`manifest ${prefix}${field} must be an address with a valid checksum.`);
 	}
 	if (value.toLowerCase() === zeroAddress) {
 		throw new ConfigError(`manifest ${prefix}${field} must not be the zero address.`);

@@ -55,15 +55,33 @@ export function assertNotCrossOrigin(originHeader: string | null, serverOrigin: 
 	}
 }
 
+/**
+ * Sec-Fetch-Site: browsers send it on every request, and leave Origin off cross-site no-cors GETs
+ * (img, script). A cross-site or same-site page is refused; same-origin, none and no header
+ * (curl) stay allowed.
+ */
+export function assertNotCrossSite(site: string | null): void {
+	if (site === 'cross-site' || site === 'same-site') {
+		throw new HttpFailure(403, 'Cross-site requests are refused.');
+	}
+}
+
 const tooLarge = () => new HttpFailure(413, 'Request body is too large.');
 
 /**
- * Reads at most MAX_BODY_BYTES of the body. A declared Content-Length over the cap is refused
- * before reading; a stream that grows past it is cancelled, so a large body is never buffered.
+ * Reads at most MAX_BODY_BYTES of the body. Content-Length is required (browser fetch always
+ * sends it for a string body): a chunked body would have to be cancelled mid-stream, and the node
+ * bridge then drops the socket before a JSON 413 can be sent. A declared length over the cap is
+ * refused before reading; a stream that still grows past it is cancelled as a backstop.
  */
 export async function readCappedBody(request: Request): Promise<string> {
-	const declared = Number(request.headers.get('content-length'));
-	if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw tooLarge();
+	const header = request.headers.get('content-length');
+	if (header === null) throw new HttpFailure(411, 'Content-Length is required.');
+	const declared = Number(header);
+	if (!Number.isInteger(declared) || declared < 0) {
+		throw new HttpFailure(400, 'Content-Length is malformed.');
+	}
+	if (declared > MAX_BODY_BYTES) throw tooLarge();
 	if (!request.body) return '';
 	const reader = request.body.getReader();
 	const chunks: Uint8Array[] = [];
