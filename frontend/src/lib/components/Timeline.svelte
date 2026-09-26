@@ -5,16 +5,34 @@
 	let { demo }: { demo: Demo } = $props();
 
 	let rwaIsCurrency0 = $derived(demo.state?.rwaIsCurrency0 ?? true);
+
+	/** New entries land on top: re-runs when the newest id changes and brings it into view. */
+	function scrollToNewest(node: HTMLElement) {
+		void demo.timeline[0]?.id;
+		node.scrollTo({ top: 0 });
+	}
 </script>
 
 <section class="timeline" aria-labelledby="timeline-title">
 	<header>
 		<h2 id="timeline-title">Timeline</h2>
-		<p>Newest on top. Mined transactions, simulations and local resets are marked apart.</p>
+		<p>Newest first. Mined transactions, simulations and local resets are marked apart.</p>
+		{#if demo.state}
+			<p class="ids">
+				Manifest pool id <code>{demo.state.poolId}</code>, hook
+				<code>{demo.state.addresses.hook}</code>
+			</p>
+		{/if}
 	</header>
 	<!-- The list scrolls on its own; a focusable region lets keyboard users scroll it (WCAG 2.1.1). -->
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-	<div class="scroll" tabindex="0" role="region" aria-label="Timeline entries">
+	<div
+		class="scroll"
+		tabindex="0"
+		role="region"
+		aria-label="Timeline entries"
+		{@attach scrollToNewest}
+	>
 		{#if demo.branchNotice}
 			<p class="notice" role="status">{demo.branchNotice}</p>
 		{/if}
@@ -26,6 +44,26 @@
 					<li><TimelineEntry {item} newest={i === 0} {rwaIsCurrency0} /></li>
 				{/each}
 			</ol>
+		{/if}
+
+		{#if demo.archive.length}
+			<details class="archive">
+				<summary>Earlier branches, discarded by local reset ({demo.archive.length})</summary>
+				{#each demo.archive as branch (branch.items[0].id)}
+					<section class="branch" aria-label="Discarded branch from snapshot {branch.branch}">
+						<p class="branch-head">
+							<span class="tag">Discarded branch, local Anvil</span>
+							from snapshot <code>{branch.branch ?? 'unknown'}</code>, closed at {branch.closedAt}:
+							{branch.reason}
+						</p>
+						<ol>
+							{#each branch.items as item (item.id)}
+								<li><TimelineEntry {item} newest={false} {rwaIsCurrency0} /></li>
+							{/each}
+						</ol>
+					</section>
+				{/each}
+			</details>
 		{/if}
 	</div>
 </section>
@@ -40,8 +78,9 @@
 
 	header {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: baseline;
-		gap: 12px;
+		gap: 2px 12px;
 	}
 
 	h2 {
@@ -54,9 +93,21 @@
 		color: var(--color-ink-2);
 	}
 
+	.ids code {
+		color: var(--color-ink);
+	}
+
+	/*
+	 * position: relative makes this the containing block of the visually-hidden spans inside, so
+	 * they are clipped here instead of stretching the page. contain stops wheel scroll chaining,
+	 * and overflow-anchor: none lets a new top entry push older ones down rather than hide itself.
+	 */
 	.scroll {
+		position: relative;
 		min-height: 120px;
 		overflow: auto;
+		overscroll-behavior: contain;
+		overflow-anchor: none;
 		border-radius: 6px;
 	}
 
@@ -79,5 +130,38 @@
 		border-radius: 6px;
 		color: var(--color-ink-2);
 		background: var(--color-sheet);
+	}
+
+	.archive {
+		margin-top: 10px;
+	}
+
+	.archive > summary {
+		cursor: pointer;
+		font-size: 12.5px;
+		font-weight: 600;
+		color: var(--color-reset);
+	}
+
+	.branch {
+		display: grid;
+		gap: 6px;
+		margin-top: 8px;
+		padding-left: 10px;
+		border-left: 2px dashed var(--color-reset);
+	}
+
+	.branch-head {
+		font-size: 12px;
+		color: var(--color-ink-2);
+	}
+
+	.tag {
+		margin-right: 6px;
+		padding: 1px 7px;
+		border-radius: 3px;
+		background: var(--color-reset);
+		color: var(--color-steel-ink);
+		font-weight: 600;
 	}
 </style>

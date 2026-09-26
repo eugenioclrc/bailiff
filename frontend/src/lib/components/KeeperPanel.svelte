@@ -23,6 +23,18 @@
 			: { text: `would revert: ${quote.error.name}`, tone: 'value' };
 	}
 
+	/** Decoded reasons of quotes that revert for anything but a healthy position, shown on demand. */
+	let quoteWhy = $derived.by(() => {
+		if (!s) return [];
+		const quotes: [string, Quote][] = [
+			['Full close', s.quotes.full],
+			['10,000 USDC', s.quotes.chunk]
+		];
+		return quotes.flatMap(([label, q]) =>
+			!q.ok && q.error.name !== 'Healthy' ? [{ label, message: q.error.message }] : []
+		);
+	});
+
 	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
 	function quoteState(quote: Quote | undefined): 'good' | 'plain' | 'bad' {
 		if (!quote) return 'plain';
@@ -61,10 +73,24 @@
 	/>
 
 	{#snippet actions()}
+		{#if quoteWhy.length}
+			<details class="why">
+				<summary>Why the quotes revert</summary>
+				<ul>
+					{#each quoteWhy as why (why.label)}
+						<li><strong>{why.label}:</strong> {why.message}</li>
+					{/each}
+				</ul>
+			</details>
+		{/if}
 		{#if blockedReason}
 			<p class="blocked" id="{uid}-blocked">{blockedReason}</p>
 		{/if}
-		<ActionButton {demo} action="horizon" tone="quiet" {blockedBy} />
+		<!-- Both are eth_calls from the keeper and never send; the probe records the adapter route for O7. -->
+		<div class="pair">
+			<ActionButton {demo} action="horizon" tone="quiet" {blockedBy} />
+			<ActionButton {demo} action="probe" tone="quiet" />
+		</div>
 		<div class="pair">
 			<ActionButton {demo} action="liquidateFull" {blockedBy} />
 			<ActionButton {demo} action="liquidateChunk" {blockedBy} />
@@ -83,5 +109,23 @@
 		font-size: 12px;
 		line-height: 1.3;
 		color: var(--color-caution);
+	}
+
+	.why {
+		font-size: 12px;
+		line-height: 1.3;
+	}
+
+	.why summary {
+		cursor: pointer;
+		font-weight: 600;
+		color: var(--color-alert);
+	}
+
+	.why ul {
+		display: grid;
+		gap: 2px;
+		padding-top: 2px;
+		overflow-wrap: anywhere;
 	}
 </style>

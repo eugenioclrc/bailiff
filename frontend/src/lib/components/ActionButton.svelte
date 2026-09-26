@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { ACTION_LABELS, ACTION_PENDING } from '$lib/actions';
+	import { CONTROL_LABELS, CONTROL_PENDING, type ControlName } from '$lib/actions';
 	import type { Demo } from '$lib/demo.svelte';
-	import type { ActionName } from '$lib/types';
 
 	type Props = {
 		demo: Demo;
-		action: ActionName;
+		/** One of the seven O5 actions, or "probe": record the adapter quote without sending. */
+		action: ControlName;
 		/** Id of an element, rendered once by the panel, that explains why this action is blocked. */
 		blockedBy?: string | null;
 		tone?: 'primary' | 'quiet' | 'warn';
@@ -24,7 +24,7 @@
 
 	function press() {
 		if (unavailable) return;
-		void demo.run(action);
+		void (action === 'probe' ? demo.recordQuote() : demo.run(action));
 	}
 </script>
 
@@ -38,10 +38,11 @@
 		aria-describedby={describedBy}
 		onclick={press}
 	>
-		{isPending ? ACTION_PENDING[action] : ACTION_LABELS[action]}
+		{isPending ? CONTROL_PENDING[action] : CONTROL_LABELS[action]}
 	</button>
+	<!-- No role="alert": the page live region already announces the same message once. -->
 	{#if failure}
-		<p class="note" id="{uid}-note" role="alert">{failure}</p>
+		<p class="note" id="{uid}-note">{failure}</p>
 	{/if}
 </div>
 

@@ -7,6 +7,7 @@ import type {
 	ChainState,
 	Holder,
 	HolderKey,
+	Quote,
 	ReadValue,
 	Unit
 } from './types';
@@ -73,18 +74,28 @@ export function emitterName(key: string): string {
 export function statusLabel(response: ActionResponse): string {
 	if (response.status === 'reset') return 'Local reset, not a transaction';
 	if (response.status === 'simulation-reverted') return 'Simulation: would revert';
-	return response.error ? 'Mined, reverted on-chain' : 'Mined transaction';
+	return response.error ? 'Mined on local Anvil, reverted' : 'Mined on local Anvil';
+}
+
+export function probeStatusLabel(quote: Quote): string {
+	return quote.ok ? 'Simulation: would succeed' : 'Simulation: would revert';
+}
+
+export function probeSummary(quote: Quote): string {
+	return quote.ok
+		? `Adapter route simulation would succeed with a ${formatUnit(quote.bounty, 'usdc')} USDC bounty. Nothing was sent.`
+		: `Adapter route simulation would revert with ${quote.error.name}. Nothing was sent.`;
 }
 
 /** One sentence for the live region after each action. */
 export function summarize(action: ActionName, response: ActionResponse): string {
 	const label = ACTION_LABELS[action];
 	if (response.status === 'reset') {
-		return `Local reset to the healthy snapshot; new snapshot ${response.snapshotId}. Timeline cleared.`;
+		return `Local reset to the healthy snapshot; new snapshot ${response.snapshotId}. The previous branch moved to earlier branches.`;
 	}
 	if (response.status === 'simulation-reverted') {
 		return `${label}: simulation would revert with ${response.error?.name ?? 'an unknown error'}. Nothing was sent.`;
 	}
 	if (response.error) return `${label}: mined but reverted with ${response.error.name}.`;
-	return `${label}: mined transaction ${response.txHash}.`;
+	return `${label}: mined on local Anvil, transaction ${response.txHash}.`;
 }

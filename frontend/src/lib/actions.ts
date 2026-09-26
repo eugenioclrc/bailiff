@@ -2,7 +2,7 @@ import { ACTIONS, type ActionName } from './types';
 
 export const ACTION_LABELS: Record<ActionName, string> = {
 	crash: 'Cut NAV to 85',
-	horizon: 'Simulate direct liquidation',
+	horizon: 'Simulate direct route',
 	liquidateFull: 'Liquidate full position',
 	withdraw95: 'Withdraw 95% of liquidity',
 	liquidateChunk: 'Liquidate 10,000 USDC',
@@ -18,6 +18,19 @@ export const ACTION_PENDING: Record<ActionName, string> = {
 	liquidateChunk: 'Quoting and sending…',
 	revoke: 'Revoking…',
 	reset: 'Resetting…'
+};
+
+/** Page controls: the seven O5 actions plus a client-side record of the adapter quote (never sent). */
+export type ControlName = ActionName | 'probe';
+
+export const CONTROL_LABELS: Record<ControlName, string> = {
+	...ACTION_LABELS,
+	probe: 'Simulate adapter route'
+};
+
+export const CONTROL_PENDING: Record<ControlName, string> = {
+	...ACTION_PENDING,
+	probe: 'Simulating…'
 };
 
 const ACTION_SET: ReadonlySet<string> = new Set(ACTIONS);

@@ -6,6 +6,8 @@ import {
 	healthStatus,
 	showFlags,
 	showRead,
+	probeStatusLabel,
+	probeSummary,
 	statusLabel,
 	summarize
 } from './view';
@@ -47,33 +49,53 @@ describe('healthStatus', () => {
 
 describe('statusLabel', () => {
 	test('never presents a simulation or a reset as a transaction', () => {
-		expect(statusLabel(response({ status: 'mined', txHash: '0x1' }))).toBe('Mined transaction');
+		expect(statusLabel(response({ status: 'mined', txHash: '0x1' }))).toBe('Mined on local Anvil');
 		expect(statusLabel(response({ status: 'simulation-reverted' }))).toBe(
 			'Simulation: would revert'
 		);
 		expect(statusLabel(response({ status: 'reset' }))).toBe('Local reset, not a transaction');
 		expect(statusLabel(response({ status: 'mined', error: { name: 'X', message: 'm' } }))).toBe(
-			'Mined, reverted on-chain'
+			'Mined on local Anvil, reverted'
 		);
+	});
+
+	test('a recorded adapter quote is a simulation either way', () => {
+		expect(probeStatusLabel({ repayAssets: '1', ok: true, bounty: '4500000000' })).toBe(
+			'Simulation: would succeed'
+		);
+		expect(
+			probeStatusLabel({
+				repayAssets: '1',
+				ok: false,
+				error: { name: 'Unauthorized', message: '' }
+			})
+		).toBe('Simulation: would revert');
 	});
 });
 
 describe('summarize', () => {
 	test('announces the outcome in words', () => {
 		expect(summarize('crash', response({ status: 'mined', txHash: '0xabc' }))).toBe(
-			'Cut NAV to 85: mined transaction 0xabc.'
+			'Cut NAV to 85: mined on local Anvil, transaction 0xabc.'
 		);
 		expect(
 			summarize(
 				'horizon',
 				response({ status: 'simulation-reverted', error: { name: 'NotAllowlisted', message: '' } })
 			)
-		).toBe(
-			'Simulate direct liquidation: simulation would revert with NotAllowlisted. Nothing was sent.'
-		);
+		).toBe('Simulate direct route: simulation would revert with NotAllowlisted. Nothing was sent.');
 		expect(summarize('reset', response({ status: 'reset', snapshotId: '0x3' }))).toBe(
-			'Local reset to the healthy snapshot; new snapshot 0x3. Timeline cleared.'
+			'Local reset to the healthy snapshot; new snapshot 0x3. The previous branch moved to earlier branches.'
 		);
+	});
+
+	test('announces a recorded adapter quote without claiming a send', () => {
+		expect(probeSummary({ repayAssets: '1', ok: true, bounty: '4500000000' })).toBe(
+			'Adapter route simulation would succeed with a 4,500.00 USDC bounty. Nothing was sent.'
+		);
+		expect(
+			probeSummary({ repayAssets: '1', ok: false, error: { name: 'Unauthorized', message: '' } })
+		).toBe('Adapter route simulation would revert with Unauthorized. Nothing was sent.');
 	});
 });
 
