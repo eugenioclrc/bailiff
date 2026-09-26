@@ -27,7 +27,7 @@
 	const STATUS_TEXT = {
 		healthy: 'Healthy: HF at or above 1',
 		liquidatable: 'Liquidatable: HF below 1',
-		'no-debt': 'No debt left',
+		'no-debt': 'healthFactor() returns max uint256 at zero debt',
 		unknown: 'Health factor unavailable',
 		stale: 'NAV is stale: MiniLend would revert StaleNav'
 	} as const;
@@ -67,11 +67,15 @@
 		shown={showRead(s?.market.claimableResidual, 'usdc')}
 		unit="USDC"
 	/>
-	<Figure label="Written-off debt" shown={showRead(s?.market.badDebtOf, 'usdc')} unit="USDC" />
+	<Figure
+		label="Written-off debt, this borrower"
+		shown={showRead(s?.market.badDebtOf, 'usdc')}
+		unit="USDC"
+	/>
 	<Figure label="RWA checker flags" shown={token} state={isFrozen ? 'bad' : 'plain'} />
 	<Figure
-		label="Liquidation block"
-		shown={showBool(s?.market.liquidationBlocked, 'blocked', 'none')}
+		label="Liquidation blocked"
+		shown={showBool(s?.market.liquidationBlocked, 'yes', 'no')}
 		state={blocked ? 'bad' : 'plain'}
 	/>
 </Panel>

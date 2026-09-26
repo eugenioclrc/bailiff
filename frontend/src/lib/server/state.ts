@@ -265,7 +265,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 
 	return {
 		env: {
-			label: `Anvil fork · block ${m.forkBlock}`,
+			label: `Anvil fork from block ${m.forkBlock}`,
 			network: m.network,
 			chainId: m.chainId,
 			forkBlock: m.forkBlock,

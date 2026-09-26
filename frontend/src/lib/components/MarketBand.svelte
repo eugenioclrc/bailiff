@@ -26,7 +26,7 @@
 	let floorNote = $derived.by(() => {
 		if (!s) return '';
 		if (!floorEnforced)
-			return 'The deployed adapter does not enforce this floor yet; it sells at any spot.';
+			return 'The deployed adapter does not check this floor yet: its swap has no price limit, so only the repayment and minBounty checks can make it revert.';
 		if (s.pool.spotAboveFloor === null) return 'Pool spot unavailable; floor status unknown.';
 		return s.pool.spotAboveFloor
 			? 'Spot is above the floor, so the adapter may sell.'
@@ -48,7 +48,7 @@
 
 	let totals = $derived([
 		{ label: 'Market debt', shown: showRead(s?.market.totalDebt, 'usdc') },
-		{ label: 'written off', shown: showRead(s?.market.totalBadDebt, 'usdc') },
+		{ label: 'written off, all borrowers', shown: showRead(s?.market.totalBadDebt, 'usdc') },
 		{ label: 'residual claims', shown: showRead(s?.market.totalResidualClaims, 'usdc') }
 	]);
 
