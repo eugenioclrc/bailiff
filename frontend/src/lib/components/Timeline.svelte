@@ -37,7 +37,10 @@
 			<p class="notice" role="status">{demo.branchNotice}</p>
 		{/if}
 		{#if demo.timeline.length === 0}
-			<p class="empty">No actions on this branch yet. Start with the issuer: cut NAV to 85.</p>
+			<p class="empty">
+				No actions recorded in this tab since the last reset. Actions sent from another tab are in
+				the evidence log. Start with the issuer: cut NAV to 85.
+			</p>
 		{:else}
 			<ol>
 				{#each demo.timeline as item, i (item.id)}

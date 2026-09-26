@@ -12,7 +12,7 @@
 		const residual = liq ? formatUnit(liq.residual, 'usdc') : '0.00';
 		switch (reconciliation.residualRoute) {
 			case 'direct-to-borrower':
-				return `Residual ${residual} USDC went straight to the borrower wallet: the deployed snapshot contract does this. The spec applies it to debt through ResidualApplied instead.`;
+				return `Residual ${residual} USDC went straight to the borrower wallet: the deployed snapshot contract does this. The spec sends it to MiniLend.settleLiquidationResidual, which repays remaining debt first, then written-off debt, and books any excess as a claim withdrawable by the borrower (ResidualApplied).`;
 			case 'residual-applied': {
 				const a = reconciliation.residualApplied;
 				return a
