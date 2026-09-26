@@ -145,7 +145,7 @@
 		display: inline-block;
 		min-width: 1em;
 		margin-right: 0.2em;
-		font-weight: 700;
+		font-weight: 600;
 	}
 
 	.ok .mark {
