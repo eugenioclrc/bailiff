@@ -82,8 +82,10 @@
 		flex-shrink: 0;
 	}
 
+	/* A fixed slot two lines tall: the header keeps its height when the NAV age gains a digit. */
 	.sync {
-		max-width: 260px;
+		flex: 0 0 240px;
+		min-height: 2lh;
 		font-size: 12px;
 		color: var(--color-ink-2);
 		text-align: right;
