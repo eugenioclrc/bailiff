@@ -7,7 +7,8 @@ import { adapterAbi, miniLendAbi, paAbi, rwaAbi, stateViewAbi, usdcAbi } from '.
 import { spotPriceWad, virtualReserves } from '../format';
 import { liquidationGate, navStatus } from '../nav';
 import type { BalanceSnapshot } from '../reconcile';
-import type { ChainState, Holder, HolderKey, Quote, ReadValue } from '../types';
+import { PROBE_CALL } from '../timeline';
+import type { ChainState, Holder, HolderKey, ProbeRecord, Quote, ReadValue } from '../types';
 import { readMany, simulate, type ReadCall, type ReadResult } from './chain';
 import type { DemoContext } from './context';
 import { currentBranch } from './reset';
@@ -168,6 +169,22 @@ async function quote(ctx: DemoContext, repayAssets: bigint): Promise<Quote> {
 			error: { name: 'NoReturnData', message: 'adapter.liquidate returned no bounty data' }
 		};
 	}
+}
+
+/** O7 control pair: the same full-close quote the dashboard shows, with its block and branch. */
+export async function readProbe(ctx: DemoContext): Promise<ProbeRecord> {
+	const [block, branch, full] = await Promise.all([
+		ctx.client.getBlock(),
+		currentBranch(ctx),
+		quote(ctx, maxUint256)
+	]);
+	return {
+		branch,
+		block: block.number.toString(),
+		from: ctx.manifest.keeper,
+		call: PROBE_CALL,
+		quote: full
+	};
 }
 
 function poolState(

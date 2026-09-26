@@ -3,10 +3,10 @@
  * appended to EVIDENCE_FILE. Receipts and reconciliations of a discarded branch therefore survive
  * the reset and a page reload. Failed actions are recorded too: a reset that reverted the chain
  * but then failed, or a transaction whose receipt never arrived, still changed the chain.
- * Only public chain data is written.
+ * The O7 adapter probe is appended too, marked as an eth_call. Only public chain data is written.
  */
 import { appendFile } from 'node:fs/promises';
-import type { ActionName, ActionResponse, ChainState } from '../types';
+import type { ActionName, ActionResponse, ChainState, ProbeRecord } from '../types';
 import type { DemoContext } from './context';
 import { describeForLog, type HttpFailure } from './guards';
 
@@ -50,7 +50,13 @@ export type BranchLine = BranchInfo & {
 	baselineError?: string;
 };
 
-type Line = ActionLine | BranchLine;
+export type ProbeLine = ProbeRecord & {
+	kind: 'probe';
+	at: string;
+	note: 'eth_call simulation, not a transaction';
+};
+
+type Line = ActionLine | BranchLine | ProbeLine;
 
 export function actionLine(
 	at: string,
@@ -81,6 +87,10 @@ export function branchLine(
 		baseline,
 		...(baselineError ? { baselineError } : {})
 	};
+}
+
+export function probeLine(at: string, probe: ProbeRecord): ProbeLine {
+	return { kind: 'probe', at, note: 'eth_call simulation, not a transaction', ...probe };
 }
 
 export function failedResponse(failure: HttpFailure): FailedResponse {
@@ -177,4 +187,12 @@ export async function recordFailure(
 		}
 		return lines;
 	});
+}
+
+/**
+ * Unlike an action, a failed write throws: nothing changed on chain, and the page must not show a
+ * probe the log does not have.
+ */
+export async function recordProbe(ctx: DemoContext, probe: ProbeRecord): Promise<void> {
+	await appendEvidence(ctx.config.evidenceFile, [probeLine(new Date().toISOString(), probe)]);
 }

@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { tryAcquire } from '$lib/server/lock';
+import { POST as PROBE } from '../probe/+server';
 import { GET } from '../state/+server';
 import { POST } from './+server';
 
@@ -115,5 +116,63 @@ describe('GET /api/state guards', () => {
 			getClientAddress: () => '10.0.0.2'
 		} as never);
 		expect(remote.status).toBe(403);
+	});
+});
+
+describe('POST /api/probe', () => {
+	async function probe(init: Init) {
+		const res = await PROBE(event({ body: '{}', ...init }) as never);
+		return { status: res.status, body: (await res.json()) as { message: string } };
+	}
+
+	test('keeps the /api/action guards: origin, site, client, Host and content type', async () => {
+		expect((await probe({ origin: null })).status).toBe(403);
+		expect((await probe({ origin: 'http://localhost:3000' })).status).toBe(403);
+		expect((await probe({ site: 'cross-site' })).status).toBe(403);
+		expect((await probe({ client: '192.168.1.20' })).status).toBe(403);
+		expect(
+			(await probe({ host: 'rebind.example:5173', origin: 'http://rebind.example:5173' })).status
+		).toBe(403);
+		expect((await probe({ contentType: 'text/plain' })).status).toBe(415);
+		expect((await probe({ contentLength: null })).status).toBe(411);
+	});
+
+	test('a body other than {} is 400, so no action or argument rides along', async () => {
+		expect((await probe({ body: '{"action":"crash"}' })).status).toBe(400);
+		expect((await probe({ body: '[]' })).status).toBe(400);
+	});
+
+	test('a held action lock is 409 before any RPC work', async () => {
+		const release = tryAcquire('revoke')!;
+		try {
+			const res = await probe({});
+			expect(res.status).toBe(409);
+			expect(res.body.message).toContain('revoke');
+		} finally {
+			release();
+		}
+	});
+
+	test('under the unit test env it stops at DEMO_MODE before any request leaves', async () => {
+		const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.reject(new TypeError('unit tests must not reach the network'))
+		);
+		const log = spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const res = await probe({});
+			expect(res.status).toBe(503);
+			expect(res.body.message).toContain('DEMO_MODE');
+			expect(fetchSpy).toHaveBeenCalledTimes(0);
+			const next = tryAcquire('crash');
+			expect(next).not.toBeNull();
+			next?.();
+		} finally {
+			fetchSpy.mockRestore();
+			log.mockRestore();
+		}
+	});
+
+	test('the O5 action body stays closed: "probe" is not an action', async () => {
+		expect((await post({ body: '{"action":"probe"}' })).status).toBe(400);
 	});
 });

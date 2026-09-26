@@ -3,7 +3,7 @@
  * restarts, and the discarded branch moves to the archive instead of being dropped (O4 evidence).
  * Pure, so the page state class stays thin and this logic runs under `bun test`.
  */
-import type { ActionName, ActionResponse, ChainState, Quote } from './types';
+import type { ActionName, ActionResponse, ProbeRecord, Quote } from './types';
 
 export const PROBE_CALL = 'adapter.liquidate(borrower, maxUint256, minBounty 0) from the keeper';
 /** Oldest archived branches are dropped past this, so the session copy stays small. */
@@ -53,16 +53,9 @@ export function archiveBranch(
 	return [closed, ...archive].slice(0, MAX_ARCHIVED_BRANCHES);
 }
 
-export function probeItem(state: ChainState, id: number, at: string): ProbeItem {
-	return {
-		kind: 'probe',
-		id,
-		at,
-		block: state.block.number,
-		from: state.addresses.keeper,
-		call: PROBE_CALL,
-		quote: state.quotes.full
-	};
+export function probeItem(record: ProbeRecord, id: number, at: string): ProbeItem {
+	const { block, from, call, quote } = record;
+	return { kind: 'probe', id, at, block, from, call, quote };
 }
 
 export function nextId(session: Pick<Session, 'timeline' | 'archive'>): number {

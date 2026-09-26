@@ -10,7 +10,7 @@ import {
 	type ActionItem,
 	type ArchivedBranch
 } from './timeline';
-import type { ChainState } from './types';
+import type { ProbeRecord } from './types';
 
 const item = (id: number): ActionItem => ({
 	kind: 'action',
@@ -48,15 +48,24 @@ describe('archiveBranch', () => {
 });
 
 describe('probeItem', () => {
-	test('records the full-close quote from the keeper, with no hash', () => {
-		const state = {
-			block: { number: '11782750' },
-			addresses: { keeper: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' },
-			quotes: { full: { repayAssets: '1', ok: true, bounty: '4500000000' } }
-		} as unknown as ChainState;
-		const probe = probeItem(state, 7, '18:01:00');
-		expect(probe).toMatchObject({ kind: 'probe', id: 7, block: '11782750', call: PROBE_CALL });
-		expect(probe.quote).toBe(state.quotes.full);
+	test('records the server probe from the keeper, with no hash', () => {
+		const record: ProbeRecord = {
+			branch: '0xe',
+			block: '11782750',
+			from: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+			call: PROBE_CALL,
+			quote: { repayAssets: '1', ok: true, bounty: '4500000000' }
+		};
+		const probe = probeItem(record, 7, '18:01:00');
+		expect(probe).toEqual({
+			kind: 'probe',
+			id: 7,
+			at: '18:01:00',
+			block: '11782750',
+			from: record.from,
+			call: PROBE_CALL,
+			quote: record.quote
+		});
 		expect('txHash' in probe).toBe(false);
 	});
 });

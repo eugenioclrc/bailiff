@@ -166,6 +166,16 @@ export type Quote = { repayAssets: string } & (
 	| { ok: false; error: { name: string; message: string }; revert?: DecodedRevert }
 );
 
+/** POST /api/probe: the keeper's adapter eth_call for the O7 control pair. Never signed or sent. */
+export type ProbeRecord = {
+	/** Snapshot id of the branch the simulation ran on. */
+	branch: string | null;
+	block: string;
+	from: string;
+	call: string;
+	quote: Quote;
+};
+
 export type ChainState = {
 	env: {
 		label: string;

@@ -14,7 +14,7 @@ import {
 	type Session,
 	type TimelineItem
 } from './timeline';
-import type { ActionName, ActionResponse, ChainState } from './types';
+import type { ActionName, ActionResponse, ChainState, ProbeRecord } from './types';
 import { probeSummary, summarize } from './view';
 
 export type { TimelineItem } from './timeline';
@@ -208,9 +208,14 @@ export class Demo {
 		}
 	}
 
+	#onProbeFailure(message: string): void {
+		this.actionError = { action: 'probe', message };
+		this.announcement = message;
+	}
+
 	/**
-	 * O7 revocation scene: records the keeper's adapter quote from a fresh read as a timeline entry.
-	 * It is the same eth_call the quote row shows; nothing is sent and no server action runs.
+	 * O7 revocation scene: the server runs the keeper's adapter eth_call (the quote row's call) and
+	 * appends it to the evidence log, then it becomes a timeline entry. Nothing is signed or sent.
 	 */
 	async recordQuote(): Promise<void> {
 		if (this.pending !== null) return;
@@ -218,18 +223,24 @@ export class Demo {
 		this.actionError = null;
 		this.announcement = '';
 		try {
-			await this.refresh();
-			const s = this.state;
-			if (!s || this.loadError) {
-				const message = this.loadError ?? 'No chain state to simulate against yet.';
-				this.actionError = { action: 'probe', message };
-				this.announcement = message;
+			const res = await fetch('/api/probe', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', accept: 'application/json' },
+				body: '{}'
+			});
+			const body = await readJson(res);
+			if (!res.ok) {
+				this.#onProbeFailure(messageOf(body, res.status));
 				return;
 			}
-			const item = probeItem(s, this.#nextId++, clock());
+			// Adopts a reset made elsewhere first, so the entry lands on the branch it ran on.
+			await this.refresh();
+			const item = probeItem(body as ProbeRecord, this.#nextId++, clock());
 			this.timeline = [item, ...this.timeline];
 			this.announcement = probeSummary(item.quote);
 			this.#persist();
+		} catch {
+			this.#onProbeFailure('The request did not reach the local server.');
 		} finally {
 			this.pending = null;
 		}

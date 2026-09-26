@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { ACTION_LABELS, parseActionBody } from './actions';
+import { ACTION_LABELS, isProbeBody, parseActionBody } from './actions';
 import { ACTIONS } from './types';
 
 describe('parseActionBody', () => {
@@ -41,5 +41,14 @@ describe('parseActionBody', () => {
 
 	test('every action has a label', () => {
 		for (const action of ACTIONS) expect(ACTION_LABELS[action].length).toBeGreaterThan(0);
+	});
+});
+
+describe('isProbeBody', () => {
+	test('accepts only an empty object, so no action or argument rides along', () => {
+		expect(isProbeBody({})).toBe(true);
+		for (const body of [{ action: 'crash' }, { repayAssets: '1' }, [], null, '', '{}', 0]) {
+			expect(isProbeBody(body)).toBe(false);
+		}
 	});
 });

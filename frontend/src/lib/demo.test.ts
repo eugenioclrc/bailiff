@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { Demo } from './demo.svelte';
-import type { ActionResponse, ChainState } from './types';
+import type { ActionResponse, ChainState, ProbeRecord, Quote } from './types';
 
 type Reply = { status: number; body: unknown } | Error;
 let stateReplies: Reply[];
 let actionReplies: Reply[];
+let probeReplies: Reply[];
 let posted: unknown[];
+let probes: RequestInit[];
 let store: Map<string, string>;
 const realFetch = globalThis.fetch;
 
@@ -23,6 +25,13 @@ const mined = (action: ActionResponse['detail']['action']): ActionResponse => ({
 	txHash: `0x${'ab'.repeat(32)}`,
 	detail: { action, signer: null, call: '', simulations: [] }
 });
+const probeRecord = (quote: Quote, branch = '0xe'): ProbeRecord => ({
+	branch,
+	block: '11782751',
+	from: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+	call: 'adapter.liquidate(borrower, maxUint256, minBounty 0) from the keeper',
+	quote
+});
 const reset = (snapshotId: string): ActionResponse => ({
 	status: 'reset',
 	snapshotId,
@@ -38,11 +47,17 @@ function reply(queue: Reply[], fallback: Reply): Response {
 beforeEach(() => {
 	stateReplies = [];
 	actionReplies = [];
+	probeReplies = [];
 	posted = [];
+	probes = [];
 	store = new Map();
 	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input);
 		if (url === '/api/state') return reply(stateReplies, { status: 200, body: chainState('0xe') });
+		if (url === '/api/probe') {
+			probes.push(init ?? {});
+			return reply(probeReplies, { status: 500, body: { message: 'unscripted' } });
+		}
 		posted.push(JSON.parse(String(init?.body)));
 		return reply(actionReplies, { status: 500, body: { message: 'unscripted' } });
 	}) as typeof fetch;
@@ -159,7 +174,7 @@ describe('Demo', () => {
 		expect(demo.timeline).toEqual([]);
 	});
 
-	test('recording the adapter route reads fresh state and posts nothing', async () => {
+	test('recording the adapter route asks the server to simulate and log it, never an action', async () => {
 		const demo = new Demo();
 		await demo.refresh();
 		const revoked = {
@@ -167,14 +182,50 @@ describe('Demo', () => {
 			ok: false as const,
 			error: { name: 'Unauthorized', message: 'Unauthorized()' }
 		};
-		stateReplies.push({ status: 200, body: chainState('0xe', revoked) });
+		probeReplies.push({ status: 200, body: probeRecord(revoked) });
 		await demo.recordQuote();
 		expect(posted).toEqual([]);
+		expect(probes).toHaveLength(1);
+		expect(probes[0]).toMatchObject({
+			method: 'POST',
+			body: '{}',
+			headers: { 'content-type': 'application/json' }
+		});
 		const [probe] = demo.timeline;
-		expect(probe.kind).toBe('probe');
-		expect(probe.kind === 'probe' && probe.quote).toEqual(revoked);
+		expect(probe).toMatchObject({ kind: 'probe', block: '11782751', quote: revoked });
 		expect(demo.announcement).toContain('would revert with Unauthorized');
+		expect(demo.actionError).toBeNull();
 		expect(demo.pending).toBeNull();
+	});
+
+	test('a refused or unreachable probe is an action error, not a timeline entry', async () => {
+		const demo = new Demo();
+		await demo.refresh();
+		probeReplies.push(
+			{ status: 409, body: { message: 'Another action (crash) is still running.' } },
+			new TypeError('fetch failed')
+		);
+		await demo.recordQuote();
+		expect(demo.actionError).toEqual({
+			action: 'probe',
+			message: 'Another action (crash) is still running.'
+		});
+		await demo.recordQuote();
+		expect(demo.actionError?.message).toContain('did not reach');
+		expect(demo.timeline).toEqual([]);
+		expect(demo.pending).toBeNull();
+	});
+
+	test('a probe after a reset done elsewhere lands on the new branch', async () => {
+		const demo = new Demo();
+		await demo.refresh();
+		actionReplies.push({ status: 200, body: mined('crash') });
+		await demo.run('crash');
+		probeReplies.push({ status: 200, body: probeRecord(okQuote, '0x10') });
+		stateReplies.push({ status: 200, body: chainState('0x10') });
+		await demo.recordQuote();
+		expect(demo.timeline.map((i) => i.kind)).toEqual(['probe']);
+		expect(demo.archive[0].items.map((i) => i.kind)).toEqual(['action']);
 	});
 
 	test('a reload restores the timeline of the same branch from the session copy', async () => {
@@ -201,5 +252,6 @@ describe('Demo', () => {
 		await demo.recordQuote();
 		await first;
 		expect(posted).toEqual([{ action: 'crash' }]);
+		expect(probes).toEqual([]);
 	});
 });

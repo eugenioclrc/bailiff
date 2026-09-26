@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ActionResponse, ChainState } from '../types';
+import type { ActionResponse, ChainState, ProbeRecord } from '../types';
 import { fakeContext } from './context.test-helpers';
-import { recordEvidence, recordFailure } from './evidence';
+import { recordEvidence, recordFailure, recordProbe } from './evidence';
 import { HttpFailure } from './guards';
 
 let dir: string;
@@ -141,5 +141,36 @@ describe('recordEvidence', () => {
 		const failure = new HttpFailure(502, `Sent ${hash} but no receipt arrived.`, { txHash: hash });
 		await recordFailure(ctx, '0xe', 'liquidateFull', failure, async () => ({}) as ChainState);
 		expect(lines(evidenceFile)[0].response).toMatchObject({ httpStatus: 502, txHash: hash });
+	});
+});
+
+describe('recordProbe', () => {
+	const probe: ProbeRecord = {
+		branch: '0xe',
+		block: '11782750',
+		from: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+		call: 'adapter.liquidate(borrower, maxUint256, minBounty 0) from the keeper',
+		quote: { repayAssets: '1', ok: false, error: { name: 'Unauthorized', message: '' } }
+	};
+
+	test('appends the O7 probe between actions, marked as an eth_call with no hash', async () => {
+		const evidenceFile = join(dir, 'evidence.jsonl');
+		const { ctx } = fakeContext({ config: { evidenceFile } });
+		await recordEvidence(ctx, '0xe', 'revoke', mined, async () => ({}) as ChainState);
+		await recordProbe(ctx, probe);
+		const [revoke, line] = lines(evidenceFile);
+		expect(revoke).toMatchObject({ kind: 'action', action: 'revoke' });
+		expect(line).toEqual({
+			kind: 'probe',
+			at: expect.stringContaining('T'),
+			note: 'eth_call simulation, not a transaction',
+			...probe
+		});
+		expect('txHash' in line).toBe(false);
+	});
+
+	test('a write failure throws, so the page never shows a probe the log lacks', async () => {
+		const { ctx } = fakeContext({ config: { evidenceFile: join(dir, 'missing', 'x.jsonl') } });
+		await expect(recordProbe(ctx, probe)).rejects.toThrow();
 	});
 });

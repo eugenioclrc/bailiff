@@ -20,7 +20,7 @@ export const ACTION_PENDING: Record<ActionName, string> = {
 	reset: 'Resetting…'
 };
 
-/** Page controls: the seven O5 actions plus a client-side record of the adapter quote (never sent). */
+/** Page controls: the seven O5 actions plus the adapter probe (POST /api/probe, never sent). */
 export type ControlName = ActionName | 'probe';
 
 export const CONTROL_LABELS: Record<ControlName, string> = {
@@ -51,6 +51,16 @@ export function parseActionBody(body: unknown): ParsedAction {
 		return { ok: false, message: `Unknown action. Expected one of: ${ACTIONS.join(', ')}.` };
 	}
 	return { ok: true, action: action as ActionName };
+}
+
+/** POST /api/probe takes no parameters: its body is exactly `{}`. */
+export function isProbeBody(body: unknown): boolean {
+	return (
+		typeof body === 'object' &&
+		body !== null &&
+		!Array.isArray(body) &&
+		Object.keys(body).length === 0
+	);
 }
 
 export function isLiquidationAction(action: ActionName): boolean {
