@@ -79,8 +79,10 @@
 		cursor: pointer;
 	}
 
+	/* 6px clears the summary's focus ring (3px plus a 2px offset), which cut through this line. */
 	.addr code {
 		display: block;
+		margin-top: 6px;
 		color: var(--color-ink);
 	}
 
