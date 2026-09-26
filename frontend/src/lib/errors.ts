@@ -15,7 +15,7 @@ export type DecodeContext = {
 
 const MAX_DEPTH = 8;
 
-/** Manifest role label -> the contract name used in errorSources, to rank the raising contract first. */
+/** Manifest role label -> the contract name used in errorSources, to name the raising contract. */
 const CONTRACT_OF_LABEL: Readonly<Record<string, string>> = {
 	hook: 'PermissionedHooks',
 	adapter: 'LiquidationAdapter',
@@ -92,13 +92,22 @@ function describeContext(details: Hex): string {
 	}
 }
 
-/** Contracts whose ABI declares `selector`, with the contract at `target` (when known) first. */
+const SPEC_SUFFIX = ' (spec)';
+
+/**
+ * Contracts whose ABI declares `selector`. When the raising contract is known and its deployed ABI
+ * declares the error, only that contract is named. Otherwise a declarer known only from the spec
+ * ABI says so, and the spec copy of a deployed contract is not listed a second time.
+ */
 function declarersOf(selector: string, target: Target): string[] {
-	const sources = errorSources[selector] ? [...errorSources[selector]] : [];
+	const sources = errorSources[selector] ?? [];
 	const own = target?.label ? CONTRACT_OF_LABEL[target.label] : undefined;
-	if (!own) return sources;
-	const isOwn = (name: string) => name === own || name.startsWith(`${own} `);
-	return [...sources.filter(isOwn), ...sources.filter((name) => !isOwn(name))];
+	if (own && sources.includes(own)) return [own];
+	return sources.flatMap((name) => {
+		if (!name.endsWith(SPEC_SUFFIX)) return [name];
+		const deployed = name.slice(0, -SPEC_SUFFIX.length);
+		return sources.includes(deployed) ? [] : [`${deployed} (spec ABI, not deployed)`];
+	});
 }
 
 function emptyLayer(target: Target): ErrorLayer {

@@ -14,13 +14,15 @@ const HOOK = '0x51247E2291d290d17C08813A175AC86465EdE8c0';
 const PM = '0xE03A1074c86CFeDd5C142C4F04F1a1536e203543';
 const KEEPER = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
 const ADAPTER = '0x0457329C4AB669D6eB6F4a9ad5E90Ab8551174C6';
+const MARKET = '0x1111111111111111111111111111111111111111';
 
 const ctx: DecodeContext = {
 	labels: {
 		[HOOK.toLowerCase()]: 'hook',
 		[PM.toLowerCase()]: 'PoolManager',
 		[KEEPER.toLowerCase()]: 'keeper',
-		[ADAPTER.toLowerCase()]: 'adapter'
+		[ADAPTER.toLowerCase()]: 'adapter',
+		[MARKET.toLowerCase()]: 'market'
 	}
 };
 
@@ -142,8 +144,7 @@ describe('decodeRevert', () => {
 		const decoded = decodeRevert(slice(full, 0, 4), ctx, ADAPTER);
 		expect(decoded.name).toBe('UnknownError');
 		expect(decoded.layers[0].selector).toBe(slice(full, 0, 4));
-		expect(decoded.layers[0].declaredBy).toContain('LiquidationAdapter');
-		expect(decoded.layers[0].declaredBy).toContain('BountyMath');
+		expect(decoded.layers[0].declaredBy).toEqual(['LiquidationAdapter']);
 	});
 
 	test('a WrappedError with an empty reason ends in EmptyRevert', () => {
@@ -173,10 +174,33 @@ describe('decodeRevert', () => {
 		expect(decoded.message).toContain('not decoded');
 	});
 
-	test('the contract that raised the error is listed first among its declarers', () => {
+	test('a known raising contract that declares the error is the only declarer named', () => {
 		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, unauthorized, HOOK_CALL_FAILED), ctx);
-		expect(decoded.layers[1].declaredBy[0]).toBe('PermissionedHooks');
-		expect(decoded.message).toContain('declared by PermissionedHooks');
+		expect(decoded.layers[1].declaredBy).toEqual(['PermissionedHooks']);
+		expect(decoded.message).toContain('[declared by PermissionedHooks]');
+		expect(decoded.message).not.toContain('LiquidationAdapter');
+		const healthy = encodeErrorResult({ abi: errorsAbi, errorName: 'Healthy', args: [10n ** 18n] });
+		expect(decodeRevert(healthy, ctx, MARKET).layers[0].declaredBy).toEqual(['MiniLend']);
+	});
+
+	test('without a known raiser, spec-only declarers are marked as not deployed', () => {
+		expect(decodeRevert(unauthorized, ctx).layers[0].declaredBy).toEqual([
+			'LiquidationAdapter (spec ABI, not deployed)',
+			'PermissionedHooks'
+		]);
+		const blocked = encodeErrorResult({
+			abi: errorsAbi,
+			errorName: 'LiquidationBlocked',
+			args: [KEEPER]
+		});
+		expect(decodeRevert(blocked, ctx).layers[0].declaredBy).toEqual([
+			'MiniLend (spec ABI, not deployed)'
+		]);
+	});
+
+	test('a spec copy of a deployed declarer is not listed twice', () => {
+		const healthy = encodeErrorResult({ abi: errorsAbi, errorName: 'Healthy', args: [1n] });
+		expect(decodeRevert(healthy, ctx).layers[0].declaredBy).toEqual(['MiniLend']);
 	});
 
 	test('the message shows token amounts in token units, the layer keeps raw values', () => {
