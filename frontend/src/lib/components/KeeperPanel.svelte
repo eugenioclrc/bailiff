@@ -37,7 +37,7 @@
 
 	let whyOpen = $state(false);
 
-	/** Escape on the summary closes the overlay, which otherwise covers the liquidation buttons. */
+	/** Escape anywhere in the disclosure closes it, so the overlay never outlives the reader's focus. */
 	function closeWhy(event: KeyboardEvent) {
 		if (event.key !== 'Escape' || !whyOpen) return;
 		event.preventDefault();
@@ -45,6 +45,12 @@
 	}
 
 	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
+	/** Tabbing out of the disclosure closes it, so the overlay never hides what gets focus next. */
+	function leaveWhy(event: FocusEvent & { currentTarget: HTMLDetailsElement }) {
+		const next = event.relatedTarget;
+		if (next instanceof Node && !event.currentTarget.contains(next)) whyOpen = false;
+	}
+
 	function quoteState(quote: Quote | undefined): 'good' | 'plain' | 'bad' {
 		if (!quote) return 'plain';
 		if (quote.ok) return 'good';
@@ -83,16 +89,6 @@
 	/>
 
 	{#snippet actions()}
-		{#if quoteWhy.length}
-			<details class="why" bind:open={whyOpen}>
-				<summary onkeydown={closeWhy}>Why the quotes revert</summary>
-				<ul>
-					{#each quoteWhy as why (why.label)}
-						<li><strong>{why.label}:</strong> {why.message}</li>
-					{/each}
-				</ul>
-			</details>
-		{/if}
 		{#if blockedReason}
 			<p class="blocked" id="{uid}-blocked">{blockedReason}</p>
 		{/if}
@@ -105,6 +101,19 @@
 			<ActionButton {demo} action="liquidateFull" {blockedBy} />
 			<ActionButton {demo} action="liquidateChunk" {blockedBy} />
 		</div>
+		<!-- After the buttons, so the open list can never sit on top of a keeper control. -->
+		{#if quoteWhy.length}
+			<!-- Delegated: Escape and focus exit bubble up from the summary, the focusable part. -->
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<details class="why" bind:open={whyOpen} onkeydown={closeWhy} onfocusout={leaveWhy}>
+				<summary>Why the quotes revert</summary>
+				<ul>
+					{#each quoteWhy as why (why.label)}
+						<li><strong>{why.label}:</strong> {why.message}</li>
+					{/each}
+				</ul>
+			</details>
+		{/if}
 	{/snippet}
 </Panel>
 
@@ -151,5 +160,15 @@
 		border: 1px solid var(--color-alert);
 		border-radius: 4px;
 		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+	}
+
+	/* Below the demo resolution the page scrolls anyway: the list opens in flow and covers nothing. */
+	@media (max-width: 1100px) {
+		.why ul {
+			position: static;
+			max-height: none;
+			margin-top: 4px;
+			box-shadow: none;
+		}
 	}
 </style>
