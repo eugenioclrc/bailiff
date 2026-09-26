@@ -14,8 +14,8 @@ bun run abis                        # writes src/lib/abis.generated.ts
 bun run dev                         # bound to http://127.0.0.1:5173 by vite.config.ts
 ```
 
-Anvil must already be running the fork and the local deploy and seed must have written the
-manifest and the baseline snapshot (OPERATIONS.md O4).
+Anvil must already be running the fork, and `../scripts/deploy-local.sh` must have written the
+manifest, the baseline snapshot and this folder's `.env` (see the root README).
 
 ## Environment
 
@@ -41,8 +41,8 @@ second server or the integration test answers 409 instead of sending between a r
 `evm_revert` and `evm_snapshot`; a lock left by a crashed process is taken over. Before the new
 snapshot is taken, the reverted chain is checked against the O3 baseline (NAV 100, borrower
 1,000 RWA / 75,000 USDC, adapter wrapper on, L 5e17). A mismatch answers 409 and takes no new
-snapshot, since that would save the stray transaction into every later reset; rerun the local
-deploy and seed (O4).
+snapshot, since that would save the stray transaction into every later reset; rerun
+`../scripts/deploy-local.sh`.
 
 ## Checks
 
@@ -65,8 +65,8 @@ timeline grows while the collateral rail stays on screen.
 
 ## After the contract fix
 
-When the fixed contracts are redeployed, rerun the local deploy and seed (it rewrites the manifest
-and the snapshot record), then `bun run abis` so the spec getters, errors and events decode from
+When the contracts change, rerun `../scripts/deploy-local.sh` (it rewrites the manifest, the
+snapshot record and `.env`), then `bun run abis` so the spec getters, errors and events decode from
 the new artifacts.
 
 ## Design

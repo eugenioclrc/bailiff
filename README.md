@@ -28,23 +28,27 @@ The hook and the PoolManager both emit an event named `Swap`; the demo console t
 
 ## Run the demo locally
 
-The demo runs on a local Anvil fork of Sepolia pinned at block 11782723. It uses the real Uniswap Labs PoolManager, PermissionsAdapterFactory and PermissionedHooks, and our own mock RWA, USDC and lending market. Nothing is sent to Sepolia.
+The demo runs on a local Anvil fork of Sepolia pinned at block 11782723. It uses the real Uniswap Labs PoolManager, PermissionsAdapterFactory and PermissionedHooks, plus our own mock RWA, USDC and lending market. Nothing is sent to Sepolia. You need two terminals.
 
 ### 1. Requirements
 
-- Foundry 1.7.1 (`forge`, `anvil`, `cast`), bun 1.3.10, git and jq.
-- A Sepolia RPC that serves archive state at block 11782723. The public Tenderly gateway `https://sepolia.gateway.tenderly.co` served it during development without a key.
+- Foundry 1.7.1 (`forge`, `anvil`, `cast`), bun 1.3.10, git, jq and python3.
+- A Sepolia RPC that serves archive state at block 11782723. The public Tenderly gateway `https://sepolia.gateway.tenderly.co` works without a key.
+- Ports 8545 (Anvil) and 5173 (console) free.
 
-### 2. Build the contracts
+### 2. Clone and build (once)
 
 ```bash
 git clone --recurse-submodules <REPO_URL> bailiff
 cd bailiff/contracts
 echo 'SEPOLIA_ARCHIVE_RPC=https://sepolia.gateway.tenderly.co' > .env   # git-ignored
 forge build
+cd ../frontend
+bun install --frozen-lockfile
+bun run abis   # generates the console ABIs from contracts/out
 ```
 
-### 3. Start the fork (terminal 1)
+### 3. Terminal 1: start the fork
 
 ```bash
 cd bailiff/contracts
@@ -52,56 +56,33 @@ source .env
 anvil --host 127.0.0.1 --chain-id 31337 --fork-url "$SEPOLIA_ARCHIVE_RPC" --fork-block-number 11782723
 ```
 
-Leave it running. Anvil prints ten funded dev accounts with their private keys. The demo uses accounts 0 to 4 as issuer, market maker, keeper, borrower and lender.
+Leave it running. Restarting Anvil wipes the deployment; run step 4 again afterwards.
 
-### 4. Deploy, seed and snapshot (terminal 2)
+### 4. Terminal 2: deploy, seed and snapshot
 
 ```bash
-cd bailiff/contracts
-export RPC_URL=http://127.0.0.1:8545
-export ISSUER_PK=<key 0> MM_PK=<key 1> KEEPER_PK=<key 2> BORROWER_PK=<key 3> LENDER_PK=<key 4>
-forge script script/DeployPA.s.sol:DeployPA --rpc-url "$RPC_URL" --broadcast --slow
-forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast --slow
-forge script script/Seed.s.sol:Seed --rpc-url "$RPC_URL" --broadcast --slow
+cd bailiff
+./scripts/deploy-local.sh
 ```
 
-Deployment runs in two stages because the PermissionsAdapter address is only known from DeployPA's mined receipt: DeployPA creates the RWA, USDC and PermissionsAdapter, and Deploy takes those three addresses from that receipt. Seed funds the market maker, lender and borrower. The scripts write the manifest to `deployments/anvil.json`.
+It takes about 20 seconds and ends with `verify: all baseline checks passed`. The script:
 
-Then record the healthy baseline, which the console's reset button returns to:
+- refuses to run unless the endpoint is a local Anvil forked at block 11782723 with the real Uniswap contracts (chain id, fork block hash and code hashes are checked);
+- deploys in two stages: the RWA and our PermissionsAdapter through the real factory, then USDC, the pool at 100 USDC per RWA, MiniLend, LiquidationAdapter and LiquidityDesk, taking every address from the mined receipts;
+- seeds the roles with Anvil's default dev accounts: 0 issuer, 1 market maker (the only LP), 2 keeper (no USDC, no RWA), 3 borrower (1,000 RWA of collateral, 75,000 USDC of debt), 4 lender;
+- checks the healthy baseline with `scripts/verify-local.sh`, then takes the Anvil snapshot that the console's reset button returns to;
+- writes `contracts/deployments/anvil.json` (manifest), `contracts/deployments/anvil-snapshot.json` and `frontend/.env`. All three are git-ignored.
 
-```bash
-SNAP=$(cast rpc evm_snapshot --rpc-url "$RPC_URL" | tr -d '"')
-jq -n --arg id "$SNAP" \
-      --arg commit "$(jq -r .sourceCommit deployments/anvil.json)" \
-      --arg manifest "$PWD/deployments/anvil.json" \
-      '{snapshotId: $id, chainId: 31337, sourceCommit: $commit, manifestPath: $manifest}' \
-  > deployments/anvil-snapshot.json
-```
+If a step fails, Anvil is rolled back and no file changes; logs are in `contracts/deployments/logs/`. The console appends every action to `$HOME/bailiff-demo/evidence.jsonl`; set `EVIDENCE_FILE` before running the script to use another path.
 
-If Anvil restarts, repeat steps 3 and 4.
-
-### 5. Start the console (terminal 2)
+### 5. Terminal 2: start the console
 
 ```bash
-cd ../frontend
-bun install --frozen-lockfile
-bun run abis
-ROOT=$(git rev-parse --show-toplevel)
-mkdir -p "$HOME/bailiff-demo"
-cat > .env <<EOF
-DEMO_MODE=local
-ANVIL_RPC=http://127.0.0.1:8545
-ISSUER_PK=<key 0>
-MM_PK=<key 1>
-KEEPER_PK=<key 2>
-DEPLOYMENT_FILE=$ROOT/contracts/deployments/anvil.json
-SNAPSHOT_FILE=$ROOT/contracts/deployments/anvil-snapshot.json
-EVIDENCE_FILE=$HOME/bailiff-demo/evidence.jsonl
-EOF
+cd frontend
 bun run dev
 ```
 
-Open http://127.0.0.1:5173. `frontend/.env` is git-ignored. The server signs only on chain 31337 over loopback, and every action and reset is appended to `EVIDENCE_FILE`. [frontend/README.md](frontend/README.md) explains each variable.
+Open http://127.0.0.1:5173. The server signs only with the Anvil dev keys that step 4 wrote to `frontend/.env`, and only on chain 31337 over loopback.
 
 ### 6. Walk the demo
 
@@ -113,4 +94,11 @@ Open http://127.0.0.1:5173. `frontend/.env` is git-ignored. The server signs onl
 6. **Reset to healthy snapshot**, **Cut NAV to 85**, then keeper, **Simulate adapter route**: it succeeds. Issuer, **Revoke adapter wrapper**, then **Simulate adapter route** again: it reverts with the hook's `Unauthorized`.
 7. **Reset to healthy snapshot**.
 
-The timeline shows every receipt decoded, and simulations are labelled as simulations, never as transactions. Do not run `bun run check`, `bun run build` or `bun run abis` while recording: they make Vite reload the page. If a reset reports that the chain no longer matches the baseline, rerun step 4.
+The timeline shows every receipt decoded, and simulations are labelled as simulations, never as transactions.
+
+### If something goes wrong
+
+- **Reset says the chain no longer matches the baseline**, or Anvil was restarted: run `./scripts/deploy-local.sh` again and reload the console page. The running console picks up the new deployment without a restart.
+- **Liquidations are disabled because the NAV is stale:** the NAV expires one day after it was set. Run `./scripts/deploy-local.sh` again and reload the page.
+- **Check the chain without sending anything:** `./scripts/verify-local.sh` compares it with the healthy baseline.
+- **While recording**, do not run `bun run check`, `bun run build` or `bun run abis`: they make Vite reload the page.
