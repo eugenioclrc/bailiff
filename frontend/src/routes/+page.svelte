@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import BorrowerCard from '$lib/components/BorrowerCard.svelte';
+	import CollateralRail from '$lib/components/CollateralRail.svelte';
 	import IssuerPanel from '$lib/components/IssuerPanel.svelte';
 	import KeeperPanel from '$lib/components/KeeperPanel.svelte';
 	import MakerPanel from '$lib/components/MakerPanel.svelte';
-	import MarketBand from '$lib/components/MarketBand.svelte';
 	import Timeline from '$lib/components/Timeline.svelte';
 	import { Demo } from '$lib/demo.svelte';
 
@@ -46,16 +46,20 @@
 		{/if}
 	</div>
 
-	<!-- Only chain figures dim while a refresh is due; the timeline's receipts are already final. -->
+	<!--
+		The collateral rail comes first at every width: it is the focal point (DESIGN.md). The role
+		panels support it and the timeline stays below them (O5). Only chain figures dim while a
+		refresh is due; the timeline's receipts are already final.
+	-->
 	<main class="board">
+		<div data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
+			<CollateralRail {demo} />
+		</div>
 		<div class="roles" data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
 			<IssuerPanel {demo} />
 			<MakerPanel {demo} />
 			<KeeperPanel {demo} />
 			<BorrowerCard {demo} />
-		</div>
-		<div data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
-			<MarketBand {demo} />
 		</div>
 		<Timeline {demo} bind:fullHeight={evidenceFull} />
 	</main>
@@ -92,7 +96,7 @@
 		gap: 10px;
 	}
 
-	/* The timeline stays below the band (O5); only the role row makes room for it. */
+	/* The timeline stays below the panels (O5); only the role row makes room for it, the rail stays. */
 	.page[data-focus='timeline'] .roles {
 		display: none;
 	}

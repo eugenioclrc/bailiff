@@ -101,6 +101,23 @@ code,
 	);
 }
 
+/*
+ * Progress of the collateral rail's one motion: the seized RWA crossing (--p), then the USDC
+ * coming back (--q). Registered as numbers so they animate; they rest at 1, the final state, which
+ * is what reduced motion and a reloaded page show.
+ */
+@property --p {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 1;
+}
+
+@property --q {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 1;
+}
+
 :focus-visible {
 	outline: 3px solid var(--color-focus);
 	outline-offset: 2px;
