@@ -37,20 +37,29 @@
 
 	let whyOpen = $state(false);
 
-	/** Escape anywhere in the disclosure closes it, so the overlay never outlives the reader's focus. */
-	function closeWhy(event: KeyboardEvent) {
-		if (event.key !== 'Escape' || !whyOpen) return;
-		event.preventDefault();
+	/*
+	 * Both handlers read and close the element itself: bind:open only syncs on the toggle event,
+	 * which fires after a fast Enter then Tab, and would otherwise reopen the list.
+	 */
+	function shut(details: HTMLDetailsElement) {
+		details.open = false;
 		whyOpen = false;
 	}
 
-	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
+	/** Escape anywhere in the disclosure closes it, so the overlay never outlives the reader's focus. */
+	function closeWhy(event: KeyboardEvent & { currentTarget: HTMLDetailsElement }) {
+		if (event.key !== 'Escape' || !event.currentTarget.open) return;
+		event.preventDefault();
+		shut(event.currentTarget);
+	}
+
 	/** Tabbing out of the disclosure closes it, so the overlay never hides what gets focus next. */
 	function leaveWhy(event: FocusEvent & { currentTarget: HTMLDetailsElement }) {
 		const next = event.relatedTarget;
-		if (next instanceof Node && !event.currentTarget.contains(next)) whyOpen = false;
+		if (next instanceof Node && !event.currentTarget.contains(next)) shut(event.currentTarget);
 	}
 
+	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
 	function quoteState(quote: Quote | undefined): 'good' | 'plain' | 'bad' {
 		if (!quote) return 'plain';
 		if (quote.ok) return 'good';
