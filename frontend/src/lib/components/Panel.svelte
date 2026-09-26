@@ -86,6 +86,8 @@
 
 	@media (max-width: 1100px), (pointer: coarse) {
 		.addr summary {
+			box-sizing: border-box;
+			min-height: 44px;
 			padding-block: 15px;
 		}
 	}
