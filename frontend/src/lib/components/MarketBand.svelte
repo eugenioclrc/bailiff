@@ -33,6 +33,12 @@
 		{ key: 'poolManager', name: 'PoolManager', role: 'raw RWA, never held' }
 	];
 
+	let totals = $derived([
+		{ label: 'Market debt', shown: showRead(s?.market.totalDebt, 'usdc') },
+		{ label: 'written off', shown: showRead(s?.market.totalBadDebt, 'usdc') },
+		{ label: 'residual claims', shown: showRead(s?.market.totalResidualClaims, 'usdc') }
+	]);
+
 	function rwaOf(key: HolderKey) {
 		return showRead(holderOf(s, key)?.rwa, 'rwa');
 	}
@@ -56,6 +62,14 @@
 			</div>
 		</dl>
 		<p class="note">{floorNote}</p>
+		<p class="totals">
+			{#each totals as total, i (total.label)}
+				{i > 0 ? '; ' : ''}{total.label}
+				<span class={[total.shown.tone, { num: total.shown.tone === 'value' }]}
+					>{total.shown.text}</span
+				>
+			{/each}
+		</p>
 	</div>
 
 	<div class="custody">
@@ -125,6 +139,24 @@
 	.note {
 		color: var(--color-ink-2);
 		font-size: 12px;
+	}
+
+	.totals {
+		font-size: 11.5px;
+		color: var(--color-ink-2);
+	}
+
+	.totals .value {
+		color: var(--color-ink);
+	}
+
+	.totals .missing {
+		color: var(--color-caution);
+		font-style: italic;
+	}
+
+	.totals .failed {
+		color: var(--color-alert);
 	}
 
 	.custody {
