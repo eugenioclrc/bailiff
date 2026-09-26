@@ -112,7 +112,8 @@ export class Demo {
 			this.#restore(next.branch);
 		} else if (this.#branch !== null && next.branch !== null && next.branch !== this.#branch) {
 			this.#closeBranch('reset outside this page');
-			this.branchNotice = `The chain was reset outside this page at ${clock()}; the previous timeline moved to earlier branches.`;
+			// The time is when the poll saw the new branch, not when the reset ran (up to one poll earlier).
+			this.branchNotice = `Noticed at ${clock()} that the chain was reset outside this page; the previous timeline moved to earlier branches.`;
 			this.announcement = this.branchNotice;
 		}
 		this.#branch = next.branch ?? this.#branch;
