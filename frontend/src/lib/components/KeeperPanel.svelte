@@ -35,6 +35,15 @@
 		);
 	});
 
+	let whyOpen = $state(false);
+
+	/** Escape on the summary closes the overlay, which otherwise covers the liquidation buttons. */
+	function closeWhy(event: KeyboardEvent) {
+		if (event.key !== 'Escape' || !whyOpen) return;
+		event.preventDefault();
+		whyOpen = false;
+	}
+
 	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
 	function quoteState(quote: Quote | undefined): 'good' | 'plain' | 'bad' {
 		if (!quote) return 'plain';
@@ -74,8 +83,8 @@
 
 	{#snippet actions()}
 		{#if quoteWhy.length}
-			<details class="why">
-				<summary>Why the quotes revert</summary>
+			<details class="why" bind:open={whyOpen}>
+				<summary onkeydown={closeWhy}>Why the quotes revert</summary>
 				<ul>
 					{#each quoteWhy as why (why.label)}
 						<li><strong>{why.label}:</strong> {why.message}</li>
@@ -111,7 +120,9 @@
 		color: var(--color-caution);
 	}
 
+	/* An overlay, so opening it never changes the row height at 1280x720. */
 	.why {
+		position: relative;
 		font-size: 12px;
 		line-height: 1.3;
 	}
@@ -123,9 +134,21 @@
 	}
 
 	.why ul {
+		position: absolute;
+		z-index: 10;
+		top: calc(100% + 4px);
+		left: 0;
+		right: 0;
 		display: grid;
 		gap: 2px;
-		padding-top: 2px;
+		max-height: 180px;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: 8px 10px;
 		overflow-wrap: anywhere;
+		background: var(--color-sheet);
+		border: 1px solid var(--color-alert);
+		border-radius: 4px;
+		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 	}
 </style>
