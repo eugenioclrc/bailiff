@@ -20,16 +20,23 @@
 	let borrower = $derived(holderOf(s, 'borrower'));
 	let hf = $derived(showHealth(s?.market.healthFactor));
 	let navStale = $derived(s?.navStatus.fresh === false);
-	/** healthFactor() still answers on a stale NAV; the verdict must not contradict the disabled buttons. */
-	let status: HealthStatus | 'stale' = $derived(
-		navStale ? 'stale' : healthStatus(s?.market.healthFactor)
-	);
+	/**
+	 * healthFactor() still answers on a stale NAV; the verdict must not contradict the disabled buttons.
+	 * While the figures predate the last action the verdict is withheld too: a green "Healthy" beside
+	 * a greyed 1.0667 read as current after Cut NAV to 85 had already made the position liquidatable.
+	 */
+	let status: HealthStatus | 'stale' | 'predates' | 'unread' = $derived.by(() => {
+		if (demo.stale) return demo.loadError ? 'unread' : 'predates';
+		return navStale ? 'stale' : healthStatus(s?.market.healthFactor);
+	});
 	const STATUS_TEXT = {
 		healthy: 'Healthy: HF at or above 1',
 		liquidatable: 'Liquidatable: HF below 1',
 		'no-debt': 'healthFactor() returns max uint256 at zero debt',
 		unknown: 'Health factor unavailable',
-		stale: 'NAV is stale: MiniLend would revert StaleNav'
+		stale: 'NAV is stale: MiniLend would revert StaleNav',
+		predates: 'Predates the last action; re-reading',
+		unread: 'Predates the last action; the re-read failed'
 	} as const;
 
 	let token = $derived.by((): Shown => {
@@ -120,6 +127,12 @@
 	[data-status='liquidatable'] .status,
 	[data-status='liquidatable'] .big {
 		color: var(--color-alert);
+	}
+
+	/* No verdict colour while the figures predate the last action; the words say why. */
+	[data-status='predates'] .status,
+	[data-status='unread'] .status {
+		color: var(--color-ink-2);
 	}
 
 	/* Muted red, like a revert: a stale NAV blocks liquidation outright. */
