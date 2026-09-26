@@ -47,6 +47,12 @@ describe('archiveBranch', () => {
 	});
 });
 
+describe('PROBE_CALL', () => {
+	test('reads like the call line of the liquidate actions', () => {
+		expect(PROBE_CALL).toBe('adapter.liquidate(borrower, maxUint256, minBounty 0.00 USDC)');
+	});
+});
+
 describe('probeItem', () => {
 	test('records the server probe from the keeper, with no hash', () => {
 		const record: ProbeRecord = {

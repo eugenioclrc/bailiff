@@ -29,7 +29,7 @@ const probeRecord = (quote: Quote, branch = '0xe'): ProbeRecord => ({
 	branch,
 	block: '11782751',
 	from: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
-	call: 'adapter.liquidate(borrower, maxUint256, minBounty 0) from the keeper',
+	call: 'adapter.liquidate(borrower, maxUint256, minBounty 0.00 USDC)',
 	quote
 });
 const reset = (snapshotId: string): ActionResponse => ({

@@ -5,7 +5,8 @@
  */
 import type { ActionName, ActionResponse, ProbeRecord, Quote } from './types';
 
-export const PROBE_CALL = 'adapter.liquidate(borrower, maxUint256, minBounty 0) from the keeper';
+/** Same wording as the liquidate actions' call line; the entry header names the keeper. */
+export const PROBE_CALL = 'adapter.liquidate(borrower, maxUint256, minBounty 0.00 USDC)';
 /** Oldest archived branches are dropped past this, so the session copy stays small. */
 export const MAX_ARCHIVED_BRANCHES = 12;
 
