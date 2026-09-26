@@ -72,12 +72,15 @@ code,
 	font-family: var(--font-figure);
 	font-variant-numeric: tabular-nums lining-nums;
 	letter-spacing: 0.01em;
-	transition: opacity 120ms ease-out;
+	transition: filter 120ms ease-out;
 }
 
-/* Figures that predate the latest action are dimmed and hatched until the next read lands. */
+/*
+ * Figures that predate the latest action turn grey and hatched until the next read lands.
+ * Grayscale, not opacity: faded figures fell to 1.85-2.60:1, grey ink keeps them above 4.5:1.
+ */
 [data-stale='true'] .num {
-	opacity: 0.4;
+	filter: grayscale(1);
 	background-image: repeating-linear-gradient(
 		135deg,
 		transparent 0 4px,
