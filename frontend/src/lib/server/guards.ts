@@ -23,7 +23,8 @@ export function isLoopbackClient(address: string): boolean {
 }
 
 export function assertLoopbackClient(address: string): void {
-	if (!isLoopbackClient(address)) throw new HttpFailure(403, 'The demo API only answers loopback clients.');
+	if (!isLoopbackClient(address))
+		throw new HttpFailure(403, 'The demo API only answers loopback clients.');
 }
 
 /** Same-origin POST: the Origin header must be present and equal the server's own origin. */
@@ -50,7 +51,12 @@ export function assertJsonBody(contentType: string | null, body: string): unknow
 function isTransportError(err: unknown): boolean {
 	if (err instanceof BaseError) {
 		return Boolean(
-			err.walk((e) => e instanceof HttpRequestError || e instanceof TimeoutError || e instanceof SocketClosedError)
+			err.walk(
+				(e) =>
+					e instanceof HttpRequestError ||
+					e instanceof TimeoutError ||
+					e instanceof SocketClosedError
+			)
 		);
 	}
 	return err instanceof TypeError && /fetch/i.test(err.message);
@@ -61,7 +67,10 @@ export function toHttpFailure(err: unknown): HttpFailure {
 	if (err instanceof HttpFailure) return err;
 	if (err instanceof ConfigError) return new HttpFailure(503, `Demo configuration: ${err.message}`);
 	if (isTransportError(err)) {
-		return new HttpFailure(502, 'The local Anvil RPC did not answer. Check that Anvil is running on ANVIL_RPC.');
+		return new HttpFailure(
+			502,
+			'The local Anvil RPC did not answer. Check that Anvil is running on ANVIL_RPC.'
+		);
 	}
 	return new HttpFailure(500, 'Unexpected server error; details are in the server log.');
 }

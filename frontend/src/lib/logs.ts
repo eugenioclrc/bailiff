@@ -2,7 +2,14 @@
  * Receipt log decoding. Each log is decoded with the ABI of the contract that emitted it, so the
  * hook's Swap and the PoolManager's Swap (same signature) stay attributed to the right emitter.
  */
-import { decodeEventLog, getAddress, toEventSelector, type Abi, type AbiEvent, type Hex } from 'viem';
+import {
+	decodeEventLog,
+	getAddress,
+	toEventSelector,
+	type Abi,
+	type AbiEvent,
+	type Hex
+} from 'viem';
 import {
 	adapterAbi,
 	deskAbi,
@@ -18,7 +25,8 @@ import {
 import { decodeArgs, type DecodeContext } from './errors';
 import type { DecodedLog, SwapAttribution } from './types';
 
-export type ContractKey = 'market' | 'adapter' | 'rwa' | 'usdc' | 'pa' | 'hook' | 'poolManager' | 'desk' | 'factory';
+export type ContractKey =
+	'market' | 'adapter' | 'rwa' | 'usdc' | 'pa' | 'hook' | 'poolManager' | 'desk' | 'factory';
 
 export type LogContext = DecodeContext & {
 	contracts: Readonly<Record<ContractKey, string>>;
@@ -111,11 +119,15 @@ function decodeOne(log: RawLog, ctx: LogContext): DecodedLog {
 			strict: true
 		});
 		const named = decoded.args as unknown as Record<string, unknown>;
-		const values = event.inputs.map((input, i) => named[input.name ?? String(i)] ?? named[String(i)]);
+		const values = event.inputs.map(
+			(input, i) => named[input.name ?? String(i)] ?? named[String(i)]
+		);
 		const args = decodeArgs(event.inputs, values, ctx);
 		const signature = `${event.name}(${event.inputs.map((i) => i.type).join(',')})`;
 		const decodedLog: DecodedLog = { ...base, event: event.name, signature, args };
-		return event.name === 'Swap' ? { ...decodedLog, swap: swapAttribution(key, args, ctx) } : decodedLog;
+		return event.name === 'Swap'
+			? { ...decodedLog, swap: swapAttribution(key, args, ctx) }
+			: decodedLog;
 	} catch {
 		return base;
 	}

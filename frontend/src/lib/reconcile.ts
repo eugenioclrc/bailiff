@@ -40,7 +40,12 @@ function findEvent(logs: DecodedLog[], emitter: string, event: string): DecodedL
 	return logs.find((l) => l.event === event && same(l.address, emitter));
 }
 
-function transferAmount(logs: DecodedLog[], token: string, from: string, to: string): bigint | null {
+function transferAmount(
+	logs: DecodedLog[],
+	token: string,
+	from: string,
+	to: string
+): bigint | null {
 	const hits = logs.filter(
 		(l) =>
 			l.event === 'Transfer' &&
@@ -95,7 +100,12 @@ function residualChecks(
 	before: BalanceSnapshot,
 	after: BalanceSnapshot,
 	ctx: ReconcileContext
-): { route: ResidualRoute; applied: Reconciliation['residualApplied']; debtRepaid: bigint; checks: Check[] } {
+): {
+	route: ResidualRoute;
+	applied: Reconciliation['residualApplied'];
+	debtRepaid: bigint;
+	checks: Check[];
+} {
 	const applied = findEvent(logs, ctx.market, 'ResidualApplied');
 	const direct = transferAmount(logs, ctx.usdc, ctx.adapter, ctx.borrower);
 	if (applied) {
@@ -108,14 +118,38 @@ function residualChecks(
 				: null;
 		return {
 			route: 'residual-applied',
-			applied: { debtRepaid: debtRepaid.toString(), badDebtRecovered: recovered.toString(), borrowerCredit: credit.toString() },
+			applied: {
+				debtRepaid: debtRepaid.toString(),
+				badDebtRecovered: recovered.toString(),
+				borrowerCredit: credit.toString()
+			},
 			debtRepaid,
 			checks: [
-				check('residual-split', 'ResidualApplied splits the residual', 'usdc', residual, debtRepaid + recovered + credit),
+				check(
+					'residual-split',
+					'ResidualApplied splits the residual',
+					'usdc',
+					residual,
+					debtRepaid + recovered + credit
+				),
 				claimDelta === null
-					? notApplicable('claimable-delta', 'Withdrawable by borrower grew by the credit', 'claimableResidual is not readable')
-					: check('claimable-delta', 'Withdrawable by borrower grew by the credit', 'usdc', credit, claimDelta),
-				notApplicable('residual-direct', 'Residual sent to the borrower wallet', 'routed through ResidualApplied')
+					? notApplicable(
+							'claimable-delta',
+							'Withdrawable by borrower grew by the credit',
+							'claimableResidual is not readable'
+						)
+					: check(
+							'claimable-delta',
+							'Withdrawable by borrower grew by the credit',
+							'usdc',
+							credit,
+							claimDelta
+						),
+				notApplicable(
+					'residual-direct',
+					'Residual sent to the borrower wallet',
+					'routed through ResidualApplied'
+				)
 			]
 		};
 	}
@@ -125,7 +159,11 @@ function residualChecks(
 			applied: null,
 			debtRepaid: 0n,
 			checks: [
-				notApplicable('residual-split', 'ResidualApplied splits the residual', 'no ResidualApplied event in this receipt'),
+				notApplicable(
+					'residual-split',
+					'ResidualApplied splits the residual',
+					'no ResidualApplied event in this receipt'
+				),
 				check(
 					'residual-direct',
 					'Residual sent to the borrower wallet',
@@ -134,7 +172,13 @@ function residualChecks(
 					direct,
 					'Snapshot contract pays the residual straight to the borrower; the spec routes it through MiniLend.settleLiquidationResidual.'
 				),
-				check('borrower-usdc', 'Borrower wallet USDC change', 'usdc', residual, after.borrowerUsdc - before.borrowerUsdc)
+				check(
+					'borrower-usdc',
+					'Borrower wallet USDC change',
+					'usdc',
+					residual,
+					after.borrowerUsdc - before.borrowerUsdc
+				)
 			]
 		};
 	}
@@ -166,27 +210,87 @@ export function reconcileLiquidation(
 			checks: [check('adapter-event', 'Adapter Liquidated event present', 'raw', 1n, 0n)]
 		};
 	}
-	const [repaid, seized, proceeds, bounty, residual] = ['repaid', 'seized', 'proceeds', 'bounty', 'residual'].map(
-		(name) => arg(adapterEvent, name) ?? 0n
-	);
+	const [repaid, seized, proceeds, bounty, residual] = [
+		'repaid',
+		'seized',
+		'proceeds',
+		'bounty',
+		'residual'
+	].map((name) => arg(adapterEvent, name) ?? 0n);
 	const marketEvent = findEvent(logs, ctx.market, 'Liquidated');
 	const badDebt = arg(marketEvent, 'badDebt') ?? 0n;
 	const hookSwap = logs.find((l) => l.swap?.canonical);
-	const pmSwap = logs.find((l) => l.swap?.emitter === 'poolManager' && l.swap.poolIdMatches && l.swap.senderIsAdapter);
+	const pmSwap = logs.find(
+		(l) => l.swap?.emitter === 'poolManager' && l.swap.poolIdMatches && l.swap.senderIsAdapter
+	);
 	const hookLegs = swapLegs(hookSwap, ctx.rwaIsCurrency0);
 	const pmLegs = swapLegs(pmSwap, ctx.rwaIsCurrency0);
 	const residualPart = residualChecks(logs, residual, before, after, ctx);
 
 	const checks: Check[] = [
-		check('split', 'Proceeds = repaid + bounty + residual', 'usdc', proceeds, repaid + bounty + residual),
-		check('market-match', 'Market event repaid matches the adapter', 'usdc', repaid, arg(marketEvent, 'repaid')),
-		check('hook-swap-sold', 'Canonical hook Swap sold the seized RWA', 'rwa', seized, hookLegs.sold),
-		check('hook-swap-proceeds', 'Canonical hook Swap paid the proceeds', 'usdc', proceeds, hookLegs.received),
-		check('pm-swap', 'PoolManager Swap agrees with the hook Swap', 'usdc', hookLegs.received, pmLegs.received),
-		check('rwa-market-adapter', 'RWA moved market → adapter', 'rwa', seized, transferAmount(logs, ctx.rwa, ctx.market, ctx.adapter)),
-		check('rwa-adapter-pa', 'RWA moved adapter → pool wrapper', 'rwa', seized, transferAmount(logs, ctx.rwa, ctx.adapter, ctx.pa)),
-		check('bounty-transfer', 'Bounty transfer to the keeper', 'usdc', bounty, transferAmount(logs, ctx.usdc, ctx.adapter, ctx.keeper)),
-		check('keeper-usdc', 'Keeper USDC change', 'usdc', bounty, after.keeperUsdc - before.keeperUsdc),
+		check(
+			'split',
+			'Proceeds = repaid + bounty + residual',
+			'usdc',
+			proceeds,
+			repaid + bounty + residual
+		),
+		check(
+			'market-match',
+			'Market event repaid matches the adapter',
+			'usdc',
+			repaid,
+			arg(marketEvent, 'repaid')
+		),
+		check(
+			'hook-swap-sold',
+			'Canonical hook Swap sold the seized RWA',
+			'rwa',
+			seized,
+			hookLegs.sold
+		),
+		check(
+			'hook-swap-proceeds',
+			'Canonical hook Swap paid the proceeds',
+			'usdc',
+			proceeds,
+			hookLegs.received
+		),
+		check(
+			'pm-swap',
+			'PoolManager Swap agrees with the hook Swap',
+			'usdc',
+			hookLegs.received,
+			pmLegs.received
+		),
+		check(
+			'rwa-market-adapter',
+			'RWA moved market → adapter',
+			'rwa',
+			seized,
+			transferAmount(logs, ctx.rwa, ctx.market, ctx.adapter)
+		),
+		check(
+			'rwa-adapter-pa',
+			'RWA moved adapter → pool wrapper',
+			'rwa',
+			seized,
+			transferAmount(logs, ctx.rwa, ctx.adapter, ctx.pa)
+		),
+		check(
+			'bounty-transfer',
+			'Bounty transfer to the keeper',
+			'usdc',
+			bounty,
+			transferAmount(logs, ctx.usdc, ctx.adapter, ctx.keeper)
+		),
+		check(
+			'keeper-usdc',
+			'Keeper USDC change',
+			'usdc',
+			bounty,
+			after.keeperUsdc - before.keeperUsdc
+		),
 		check('keeper-rwa', 'Keeper RWA after', 'rwa', 0n, after.keeperRwa),
 		check('pm-rwa', 'PoolManager raw RWA after', 'rwa', 0n, after.pmRwa),
 		check(
@@ -204,7 +308,13 @@ export function reconcileLiquidation(
 			repaid + residualPart.debtRepaid + badDebt,
 			before.debt - after.debt
 		),
-		check('collateral', 'Collateral drop = seized', 'rwa', seized, before.collateral - after.collateral)
+		check(
+			'collateral',
+			'Collateral drop = seized',
+			'rwa',
+			seized,
+			before.collateral - after.collateral
+		)
 	];
 
 	return {

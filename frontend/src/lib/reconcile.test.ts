@@ -39,7 +39,11 @@ describe('reconcileLiquidation', () => {
 		const logs = decodeLogs(preFixLiquidationLogs(), logContext);
 		const result = reconcileLiquidation(logs, before, after(), ctx);
 		expect(result.residualRoute).toBe('direct-to-borrower');
-		expect(result.liquidation).toMatchObject({ repaid: '75000000000', bounty: '4500000000', residual: '12041590000' });
+		expect(result.liquidation).toMatchObject({
+			repaid: '75000000000',
+			bounty: '4500000000',
+			residual: '12041590000'
+		});
 		const checks = checkMap(result.checks);
 		for (const id of [
 			'split',
@@ -89,7 +93,12 @@ describe('reconcileLiquidation', () => {
 				ADDR.market,
 				miniLendAbi as Abi,
 				'ResidualApplied',
-				{ borrower: ADDR.borrower, debtRepaid: chunk.residual, badDebtRecovered: 0n, borrowerCredit: 0n },
+				{
+					borrower: ADDR.borrower,
+					debtRepaid: chunk.residual,
+					badDebtRecovered: 0n,
+					borrowerCredit: 0n
+				},
 				9
 			)
 		);
@@ -103,7 +112,11 @@ describe('reconcileLiquidation', () => {
 		};
 		const result = reconcileLiquidation(logs, start, end, ctx);
 		expect(result.residualRoute).toBe('residual-applied');
-		expect(result.residualApplied).toEqual({ debtRepaid: '1244140000', badDebtRecovered: '0', borrowerCredit: '0' });
+		expect(result.residualApplied).toEqual({
+			debtRepaid: '1244140000',
+			badDebtRecovered: '0',
+			borrowerCredit: '0'
+		});
 		const checks = checkMap(result.checks);
 		expect(checks['residual-split']).toBe(true);
 		expect(checks['claimable-delta']).toBe(true);
@@ -114,13 +127,21 @@ describe('reconcileLiquidation', () => {
 	test('a residual with no route is flagged', () => {
 		const raw = preFixLiquidationLogs().filter((l) => l.logIndex !== 9);
 		const logs = decodeLogs(raw, logContext);
-		const result = reconcileLiquidation(logs, before, after({ borrowerUsdc: before.borrowerUsdc }), ctx);
+		const result = reconcileLiquidation(
+			logs,
+			before,
+			after({ borrowerUsdc: before.borrowerUsdc }),
+			ctx
+		);
 		expect(result.residualRoute).toBe('unaccounted');
 		expect(checkMap(result.checks)['residual-route']).toBe(false);
 	});
 
 	test('without the adapter event nothing is claimed', () => {
-		const logs = decodeLogs(preFixLiquidationLogs().filter((l) => l.logIndex !== 10), logContext);
+		const logs = decodeLogs(
+			preFixLiquidationLogs().filter((l) => l.logIndex !== 10),
+			logContext
+		);
 		const result = reconcileLiquidation(logs, before, after(), ctx);
 		expect(result.liquidation).toBeNull();
 		expect(checkMap(result.checks)['adapter-event']).toBe(false);

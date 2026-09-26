@@ -1,6 +1,14 @@
 /** Synthetic receipt logs for the decoder and reconciliation tests. */
 import { encodeAbiParameters, encodeEventTopics, type Abi, type AbiEvent, type Hex } from 'viem';
-import { adapterAbi, hookAbi, miniLendAbi, paAbi, poolManagerAbi, rwaAbi, usdcAbi } from './abis.generated';
+import {
+	adapterAbi,
+	hookAbi,
+	miniLendAbi,
+	paAbi,
+	poolManagerAbi,
+	rwaAbi,
+	usdcAbi
+} from './abis.generated';
 import type { LogContext, RawLog } from './logs';
 
 export const ADDR = {
@@ -48,10 +56,15 @@ export function makeLog(
 	const topics = encodeEventTopics({
 		abi: [event],
 		eventName,
-		args: Object.fromEntries(event.inputs.filter((i) => i.indexed).map((i) => [i.name, args[i.name!]]))
+		args: Object.fromEntries(
+			event.inputs.filter((i) => i.indexed).map((i) => [i.name, args[i.name!]])
+		)
 	} as never) as Hex[];
 	const plain = event.inputs.filter((i) => !i.indexed);
-	const data = encodeAbiParameters(plain, plain.map((i) => args[i.name!]));
+	const data = encodeAbiParameters(
+		plain,
+		plain.map((i) => args[i.name!])
+	);
 	return { address, topics, data, logIndex };
 }
 
@@ -78,22 +91,76 @@ export function preFixLiquidationLogs(liq: Amounts = LIQ): RawLog[] {
 		fee: 3000
 	});
 	return [
-		makeLog(ADDR.adapter, adapterAbi as Abi, 'Liquidated', { borrower: ADDR.borrower, keeper: ADDR.keeper, ...liq }, 10),
+		makeLog(
+			ADDR.adapter,
+			adapterAbi as Abi,
+			'Liquidated',
+			{ borrower: ADDR.borrower, keeper: ADDR.keeper, ...liq },
+			10
+		),
 		makeLog(ADDR.hook, hookAbi as Abi, 'Swap', swapArgs(ADDR.adapter), 1),
 		makeLog(ADDR.poolManager, poolManagerAbi as Abi, 'Swap', swapArgs(ADDR.adapter), 0),
-		makeLog(ADDR.usdc, usdcAbi as Abi, 'Transfer', { from: ADDR.poolManager, to: ADDR.adapter, value: liq.proceeds }, 2),
-		makeLog(ADDR.rwa, rwaAbi as Abi, 'Transfer', { from: ADDR.market, to: ADDR.adapter, value: liq.seized }, 3),
-		makeLog(ADDR.usdc, usdcAbi as Abi, 'Transfer', { from: ADDR.adapter, to: ADDR.market, value: liq.repaid }, 4),
+		makeLog(
+			ADDR.usdc,
+			usdcAbi as Abi,
+			'Transfer',
+			{ from: ADDR.poolManager, to: ADDR.adapter, value: liq.proceeds },
+			2
+		),
+		makeLog(
+			ADDR.rwa,
+			rwaAbi as Abi,
+			'Transfer',
+			{ from: ADDR.market, to: ADDR.adapter, value: liq.seized },
+			3
+		),
+		makeLog(
+			ADDR.usdc,
+			usdcAbi as Abi,
+			'Transfer',
+			{ from: ADDR.adapter, to: ADDR.market, value: liq.repaid },
+			4
+		),
 		makeLog(
 			ADDR.market,
 			miniLendAbi as Abi,
 			'Liquidated',
-			{ liquidator: ADDR.adapter, borrower: ADDR.borrower, repaid: liq.repaid, seized: liq.seized, badDebt: 0n },
+			{
+				liquidator: ADDR.adapter,
+				borrower: ADDR.borrower,
+				repaid: liq.repaid,
+				seized: liq.seized,
+				badDebt: 0n
+			},
 			5
 		),
-		makeLog(ADDR.rwa, rwaAbi as Abi, 'Transfer', { from: ADDR.adapter, to: ADDR.pa, value: liq.seized }, 6),
-		makeLog(ADDR.pa, paAbi as Abi, 'Transfer', { from: ZERO, to: ADDR.poolManager, value: liq.seized }, 7),
-		makeLog(ADDR.usdc, usdcAbi as Abi, 'Transfer', { from: ADDR.adapter, to: ADDR.keeper, value: liq.bounty }, 8),
-		makeLog(ADDR.usdc, usdcAbi as Abi, 'Transfer', { from: ADDR.adapter, to: ADDR.borrower, value: liq.residual }, 9)
+		makeLog(
+			ADDR.rwa,
+			rwaAbi as Abi,
+			'Transfer',
+			{ from: ADDR.adapter, to: ADDR.pa, value: liq.seized },
+			6
+		),
+		makeLog(
+			ADDR.pa,
+			paAbi as Abi,
+			'Transfer',
+			{ from: ZERO, to: ADDR.poolManager, value: liq.seized },
+			7
+		),
+		makeLog(
+			ADDR.usdc,
+			usdcAbi as Abi,
+			'Transfer',
+			{ from: ADDR.adapter, to: ADDR.keeper, value: liq.bounty },
+			8
+		),
+		makeLog(
+			ADDR.usdc,
+			usdcAbi as Abi,
+			'Transfer',
+			{ from: ADDR.adapter, to: ADDR.borrower, value: liq.residual },
+			9
+		)
 	];
 }

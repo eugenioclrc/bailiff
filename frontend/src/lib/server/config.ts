@@ -4,10 +4,23 @@
  * Error messages name the offending variable or field and never echo a key.
  */
 import { isAbsolute } from 'node:path';
-import { encodeAbiParameters, getAddress, isAddress, keccak256, type Address, type Hex } from 'viem';
+import {
+	encodeAbiParameters,
+	getAddress,
+	isAddress,
+	keccak256,
+	type Address,
+	type Hex
+} from 'viem';
 
 export const LOCAL_CHAIN_ID = 31337;
-const FIXED = { fee: 3000, tickSpacing: 60, tickLower: -887220, tickUpper: 887220, navFloorBps: 9900 };
+const FIXED = {
+	fee: 3000,
+	tickSpacing: 60,
+	tickLower: -887220,
+	tickUpper: 887220,
+	navFloorBps: 9900
+};
 
 export class ConfigError extends Error {
 	override name = 'ConfigError';
@@ -81,7 +94,9 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 export function isLoopbackHttpUrl(value: string): boolean {
 	try {
 		const url = new URL(value);
-		return url.protocol === 'http:' && !url.username && !url.password && LOOPBACK_HOSTS.has(url.hostname);
+		return (
+			url.protocol === 'http:' && !url.username && !url.password && LOOPBACK_HOSTS.has(url.hostname)
+		);
 	} catch {
 		return false;
 	}
@@ -105,7 +120,9 @@ function requireJsonPath(env: Record<string, string | undefined>, name: string):
 
 export function parseEnv(env: Record<string, string | undefined>): DemoConfig {
 	if (env.DEMO_MODE !== 'local') {
-		throw new ConfigError('DEMO_MODE must be "local"; server actions are disabled in any other mode.');
+		throw new ConfigError(
+			'DEMO_MODE must be "local"; server actions are disabled in any other mode.'
+		);
 	}
 	const rpcUrl = env.ANVIL_RPC ?? '';
 	if (!isLoopbackHttpUrl(rpcUrl)) {
@@ -185,7 +202,8 @@ function parsePoolKey(raw: unknown, pa: Address, usdc: Address, hook: Address): 
 		tickSpacing: exact(obj, 'tickSpacing', FIXED.tickSpacing, 'poolKey.'),
 		hooks: address(obj, 'hooks', 'poolKey.')
 	};
-	if (key.hooks !== hook) throw new ConfigError('manifest poolKey.hooks must be the manifest hook.');
+	if (key.hooks !== hook)
+		throw new ConfigError('manifest poolKey.hooks must be the manifest hook.');
 	const [low, high] = BigInt(pa) < BigInt(usdc) ? [pa, usdc] : [usdc, pa];
 	if (key.currency0 !== low || key.currency1 !== high) {
 		throw new ConfigError('manifest poolKey currencies must be the sorted pair (pa, usdc).');
@@ -193,7 +211,11 @@ function parsePoolKey(raw: unknown, pa: Address, usdc: Address, hook: Address): 
 	return key;
 }
 
-function parseNullable(obj: Record<string, unknown>, field: string, pattern: RegExp): string | null {
+function parseNullable(
+	obj: Record<string, unknown>,
+	field: string,
+	pattern: RegExp
+): string | null {
 	const value = obj[field];
 	if (value === null) return null;
 	if (typeof value !== 'string' || !pattern.test(value)) {
@@ -245,7 +267,8 @@ export function parseSnapshotRecord(json: unknown): SnapshotRecord {
 	if (typeof snapshotId !== 'string' || !/^0x[0-9a-fA-F]+$/.test(snapshotId)) {
 		throw new ConfigError('snapshot file snapshotId must be a hex quantity such as "0x2".');
 	}
-	if (chainId !== LOCAL_CHAIN_ID) throw new ConfigError(`snapshot file chainId must be ${LOCAL_CHAIN_ID}.`);
+	if (chainId !== LOCAL_CHAIN_ID)
+		throw new ConfigError(`snapshot file chainId must be ${LOCAL_CHAIN_ID}.`);
 	if (typeof sourceCommit !== 'string' || !GIT_SHA.test(sourceCommit)) {
 		throw new ConfigError('snapshot file sourceCommit must be a 40-character git SHA.');
 	}

@@ -29,10 +29,14 @@ describe('guards', () => {
 	});
 
 	test('same origin required', () => {
-		expect(statusOf(() => assertSameOrigin('http://127.0.0.1:5173', 'http://127.0.0.1:5173'))).toBe(200);
+		expect(statusOf(() => assertSameOrigin('http://127.0.0.1:5173', 'http://127.0.0.1:5173'))).toBe(
+			200
+		);
 		expect(statusOf(() => assertSameOrigin(null, 'http://127.0.0.1:5173'))).toBe(403);
 		expect(statusOf(() => assertSameOrigin('http://evil.test', 'http://127.0.0.1:5173'))).toBe(403);
-		expect(statusOf(() => assertSameOrigin('http://localhost:5173', 'http://127.0.0.1:5173'))).toBe(403);
+		expect(statusOf(() => assertSameOrigin('http://localhost:5173', 'http://127.0.0.1:5173'))).toBe(
+			403
+		);
 	});
 
 	test('JSON body with the right content type and size', () => {
@@ -41,7 +45,11 @@ describe('guards', () => {
 		expect(statusOf(() => assertJsonBody('text/plain', '{}'))).toBe(415);
 		expect(statusOf(() => assertJsonBody(null, '{}'))).toBe(415);
 		expect(statusOf(() => assertJsonBody('application/json', '{nope'))).toBe(400);
-		expect(statusOf(() => assertJsonBody('application/json', JSON.stringify({ action: 'x'.repeat(400) })))).toBe(413);
+		expect(
+			statusOf(() =>
+				assertJsonBody('application/json', JSON.stringify({ action: 'x'.repeat(400) }))
+			)
+		).toBe(413);
 	});
 });
 
@@ -55,7 +63,9 @@ describe('toHttpFailure', () => {
 		const failure = toHttpFailure(err);
 		expect(failure.status).toBe(502);
 		expect(failure.message).not.toContain('secret');
-		expect(toHttpFailure(new TimeoutError({ body: {}, url: 'http://127.0.0.1:8545' })).status).toBe(502);
+		expect(toHttpFailure(new TimeoutError({ body: {}, url: 'http://127.0.0.1:8545' })).status).toBe(
+			502
+		);
 	});
 
 	test('anything else is a generic 500', () => {

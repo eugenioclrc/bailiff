@@ -16,7 +16,12 @@ describe('decodeLogs', () => {
 
 	test('attributes Swap by emitter, poolId and sender', () => {
 		const [pm, hook] = decodeLogs(preFixLiquidationLogs(), logContext);
-		expect(hook.swap).toEqual({ emitter: 'hook', poolIdMatches: true, senderIsAdapter: true, canonical: true });
+		expect(hook.swap).toEqual({
+			emitter: 'hook',
+			poolIdMatches: true,
+			senderIsAdapter: true,
+			canonical: true
+		});
 		expect(pm.swap).toEqual({
 			emitter: 'poolManager',
 			poolIdMatches: true,
@@ -37,7 +42,12 @@ describe('decodeLogs', () => {
 			fee: 3000
 		};
 		const [log] = decodeLogs([makeLog(ADDR.hook, hookAbi as Abi, 'Swap', args, 0)], logContext);
-		expect(log.swap).toEqual({ emitter: 'hook', poolIdMatches: false, senderIsAdapter: false, canonical: false });
+		expect(log.swap).toEqual({
+			emitter: 'hook',
+			poolIdMatches: false,
+			senderIsAdapter: false,
+			canonical: false
+		});
 	});
 
 	test('a Swap copy from an unrelated address is attributed to "other"', () => {
@@ -52,7 +62,10 @@ describe('decodeLogs', () => {
 			fee: 3000
 		};
 		const imposter = '0x000000000000000000000000000000000000dEaD';
-		const [log] = decodeLogs([makeLog(imposter, poolManagerAbi as Abi, 'Swap', args, 0)], logContext);
+		const [log] = decodeLogs(
+			[makeLog(imposter, poolManagerAbi as Abi, 'Swap', args, 0)],
+			logContext
+		);
 		expect(log.emitter).toBe('0x000000000000000000000000000000000000dEaD');
 		expect(log.swap?.emitter).toBe('other');
 		expect(log.swap?.canonical).toBe(false);
@@ -73,6 +86,12 @@ describe('decodeLogs', () => {
 			[{ address: ADDR.market, topics: [`0x${'ab'.repeat(32)}`], data: '0x', logIndex: 3 }],
 			logContext
 		);
-		expect(log).toMatchObject({ logIndex: 3, emitter: 'market', event: null, signature: null, args: [] });
+		expect(log).toMatchObject({
+			logIndex: 3,
+			emitter: 'market',
+			event: null,
+			signature: null,
+			args: []
+		});
 	});
 });

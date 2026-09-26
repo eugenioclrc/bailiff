@@ -17,7 +17,15 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { LogContext } from '../logs';
-import { ConfigError, LOCAL_CHAIN_ID, parseEnv, parseManifest, type AddressField, type DemoConfig, type Manifest } from './config';
+import {
+	ConfigError,
+	LOCAL_CHAIN_ID,
+	parseEnv,
+	parseManifest,
+	type AddressField,
+	type DemoConfig,
+	type Manifest
+} from './config';
 
 export const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as const;
 const RPC_TIMEOUT_MS = 20_000;
@@ -68,7 +76,10 @@ async function loadManifest(path: string): Promise<Manifest> {
 
 function buildLogContext(manifest: Manifest): LogContext {
 	const labels = Object.fromEntries(
-		(Object.keys(LABELS) as AddressField[]).map((field) => [manifest[field].toLowerCase(), LABELS[field]])
+		(Object.keys(LABELS) as AddressField[]).map((field) => [
+			manifest[field].toLowerCase(),
+			LABELS[field]
+		])
 	);
 	const { market, adapter, rwa, usdc, pa, hook, poolManager, desk, factory } = manifest;
 	return {
@@ -81,10 +92,17 @@ function buildLogContext(manifest: Manifest): LogContext {
 type NodeInfo = { forkConfig?: { forkBlockNumber?: number | string | null } };
 
 /** Chain id 31337 and an Anvil node forked at the manifest's block; nothing else is accepted. */
-async function assertLocalAnvil(client: PublicClient<Transport, Chain>, manifest: Manifest): Promise<void> {
+async function assertLocalAnvil(
+	client: PublicClient<Transport, Chain>,
+	manifest: Manifest
+): Promise<void> {
 	const chainId = await client.getChainId();
-	if (chainId !== LOCAL_CHAIN_ID) throw new ConfigError(`the RPC reports chain ${chainId}, not ${LOCAL_CHAIN_ID}.`);
-	const request = client.request as unknown as (args: { method: string; params: unknown[] }) => Promise<unknown>;
+	if (chainId !== LOCAL_CHAIN_ID)
+		throw new ConfigError(`the RPC reports chain ${chainId}, not ${LOCAL_CHAIN_ID}.`);
+	const request = client.request as unknown as (args: {
+		method: string;
+		params: unknown[];
+	}) => Promise<unknown>;
 	let info: NodeInfo;
 	try {
 		info = (await request({ method: 'anvil_nodeInfo', params: [] })) as NodeInfo;
@@ -93,7 +111,9 @@ async function assertLocalAnvil(client: PublicClient<Transport, Chain>, manifest
 	}
 	const forkBlock = info.forkConfig?.forkBlockNumber;
 	if (manifest.forkBlock !== null && String(forkBlock ?? '') !== manifest.forkBlock) {
-		throw new ConfigError(`Anvil is not forked at block ${manifest.forkBlock} as the manifest says.`);
+		throw new ConfigError(
+			`Anvil is not forked at block ${manifest.forkBlock} as the manifest says.`
+		);
 	}
 }
 
@@ -114,7 +134,9 @@ export async function loadContext(): Promise<DemoContext> {
 	const wallet = (role: Role) => {
 		const account = privateKeyToAccount(config.keys[role]);
 		if (account.address !== manifest[role]) {
-			throw new ConfigError(`${role.toUpperCase()}_PK does not belong to the manifest ${role} address.`);
+			throw new ConfigError(
+				`${role.toUpperCase()}_PK does not belong to the manifest ${role} address.`
+			);
 		}
 		return createWalletClient({ account, chain, transport });
 	};

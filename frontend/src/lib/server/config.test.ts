@@ -46,7 +46,11 @@ describe('parseEnv', () => {
 	});
 
 	test('rejects a non-loopback RPC', () => {
-		for (const url of ['https://sepolia.example.org', 'http://10.0.0.2:8545', 'http://127.0.0.1.evil.io:8545']) {
+		for (const url of [
+			'https://sepolia.example.org',
+			'http://10.0.0.2:8545',
+			'http://127.0.0.1.evil.io:8545'
+		]) {
 			expectConfigError(() => parseEnv({ ...goodEnv, ANVIL_RPC: url }), 'ANVIL_RPC');
 		}
 	});
@@ -57,7 +61,10 @@ describe('parseEnv', () => {
 	});
 
 	test('requires absolute JSON paths', () => {
-		expectConfigError(() => parseEnv({ ...goodEnv, DEPLOYMENT_FILE: 'anvil.json' }), 'DEPLOYMENT_FILE');
+		expectConfigError(
+			() => parseEnv({ ...goodEnv, DEPLOYMENT_FILE: 'anvil.json' }),
+			'DEPLOYMENT_FILE'
+		);
 		expectConfigError(() => parseEnv({ ...goodEnv, SNAPSHOT_FILE: '/tmp/x.txt' }), 'SNAPSHOT_FILE');
 	});
 });
@@ -132,7 +139,10 @@ describe('parseManifest', () => {
 	});
 
 	test('rejects a poolId that does not match the poolKey', () => {
-		expectConfigError(() => parseManifest({ ...manifest, poolId: `0x${'00'.repeat(32)}` }), 'poolId');
+		expectConfigError(
+			() => parseManifest({ ...manifest, poolId: `0x${'00'.repeat(32)}` }),
+			'poolId'
+		);
 	});
 
 	test('rejects a poolKey with another hook or unsorted currencies', () => {
@@ -173,6 +183,9 @@ describe('parseSnapshotRecord', () => {
 	test('rejects other chains and malformed ids', () => {
 		expectConfigError(() => parseSnapshotRecord({ ...record, chainId: 1 }), 'chainId');
 		expectConfigError(() => parseSnapshotRecord({ ...record, snapshotId: '2' }), 'snapshotId');
-		expectConfigError(() => parseSnapshotRecord({ ...record, manifestPath: 'anvil.json' }), 'manifestPath');
+		expectConfigError(
+			() => parseSnapshotRecord({ ...record, manifestPath: 'anvil.json' }),
+			'manifestPath'
+		);
 	});
 });

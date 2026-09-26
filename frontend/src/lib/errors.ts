@@ -52,7 +52,12 @@ export function decodeArgs(
 		if (input.type === 'address' && typeof raw === 'string') {
 			const address = getAddress(raw);
 			const label = ctx.labels[address.toLowerCase()];
-			return { name: input.name || `arg${i}`, type: input.type, value: address, ...(label ? { label } : {}) };
+			return {
+				name: input.name || `arg${i}`,
+				type: input.type,
+				value: address,
+				...(label ? { label } : {})
+			};
 		}
 		return { name: input.name || `arg${i}`, type: input.type, value: stringify(raw) };
 	});
@@ -74,7 +79,15 @@ function describeContext(details: Hex): string {
 }
 
 function emptyLayer(target: Target): ErrorLayer {
-	return { kind: 'empty', selector: null, name: null, signature: null, args: [], target, declaredBy: [] };
+	return {
+		kind: 'empty',
+		selector: null,
+		name: null,
+		signature: null,
+		args: [],
+		target,
+		declaredBy: []
+	};
 }
 
 function unknownLayer(data: Hex, target: Target): ErrorLayer {
@@ -91,7 +104,12 @@ function unknownLayer(data: Hex, target: Target): ErrorLayer {
 	};
 }
 
-function decodeLayers(data: Hex | undefined, target: Target, ctx: DecodeContext, depth: number): ErrorLayer[] {
+function decodeLayers(
+	data: Hex | undefined,
+	target: Target,
+	ctx: DecodeContext,
+	depth: number
+): ErrorLayer[] {
 	if (!data || data === '0x') return [emptyLayer(target)];
 	if (size(data) < 4) return [unknownLayer(data, target)];
 	let decoded;
@@ -136,7 +154,9 @@ function targetText(target: Target): string {
 function shortCall(call: string | undefined): string {
 	if (!call) return 'a call';
 	const withoutContract = call.includes('.') ? call.slice(call.indexOf('.') + 1) : call;
-	return withoutContract.includes('(') ? withoutContract.slice(0, withoutContract.indexOf('(')) : withoutContract;
+	return withoutContract.includes('(')
+		? withoutContract.slice(0, withoutContract.indexOf('('))
+		: withoutContract;
 }
 
 function leafText(layer: ErrorLayer): string {
@@ -156,7 +176,11 @@ function leafName(layer: ErrorLayer): string {
 	return layer.name;
 }
 
-export function decodeRevert(data: Hex | undefined, ctx: DecodeContext, target?: string): DecodedRevert {
+export function decodeRevert(
+	data: Hex | undefined,
+	ctx: DecodeContext,
+	target?: string
+): DecodedRevert {
 	const layers = decodeLayers(data, toTarget(target, ctx), ctx, 0);
 	const cause = layers[layers.length - 1];
 	const wrappers = layers.filter((l) => l.kind === 'wrapped');

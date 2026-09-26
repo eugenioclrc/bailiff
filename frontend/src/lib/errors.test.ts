@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { encodeAbiParameters, encodeErrorResult, parseAbi, toFunctionSelector, type Hex } from 'viem';
+import {
+	encodeAbiParameters,
+	encodeErrorResult,
+	parseAbi,
+	toFunctionSelector,
+	type Hex
+} from 'viem';
 import { errorsAbi } from './abis.generated';
 import { decodeRevert, extractRevertData, type DecodeContext } from './errors';
 
@@ -67,7 +73,8 @@ describe('decodeRevert', () => {
 	});
 
 	test('keeps target and selector of an unknown error', () => {
-		const data = '0xdeadbeef0000000000000000000000000000000000000000000000000000000000000001' as Hex;
+		const data =
+			'0xdeadbeef0000000000000000000000000000000000000000000000000000000000000001' as Hex;
 		const decoded = decodeRevert(data, ctx, ADAPTER);
 		expect(decoded.name).toBe('UnknownError');
 		expect(decoded.layers[0]).toMatchObject({ kind: 'unknown', selector: '0xdeadbeef', raw: data });
@@ -93,7 +100,10 @@ describe('decodeRevert', () => {
 
 	test('decodes Error(string) and Panic(uint256)', () => {
 		const abi = parseAbi(['error Error(string)', 'error Panic(uint256)']);
-		const message = decodeRevert(encodeErrorResult({ abi, errorName: 'Error', args: ['nope'] }), ctx);
+		const message = decodeRevert(
+			encodeErrorResult({ abi, errorName: 'Error', args: ['nope'] }),
+			ctx
+		);
 		expect(message.name).toBe('Error');
 		expect(message.message).toContain('nope');
 		const panic = decodeRevert(encodeErrorResult({ abi, errorName: 'Panic', args: [0x11n] }), ctx);

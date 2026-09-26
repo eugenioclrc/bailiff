@@ -72,7 +72,12 @@ export async function sendAndWait(
 	data: Hex
 ): Promise<{ hash: Hex; receipt: TransactionReceipt }> {
 	const wallet = ctx.wallets[role];
-	const hash = await wallet.sendTransaction({ account: wallet.account, chain: ctx.chain, to, data });
+	const hash = await wallet.sendTransaction({
+		account: wallet.account,
+		chain: ctx.chain,
+		to,
+		data
+	});
 	const receipt = await ctx.client.waitForTransactionReceipt({
 		hash,
 		timeout: RECEIPT_TIMEOUT_MS,
@@ -82,14 +87,24 @@ export async function sendAndWait(
 }
 
 export async function rpc<T>(ctx: DemoContext, method: string, params: unknown[] = []): Promise<T> {
-	const request = ctx.client.request as unknown as (args: { method: string; params: unknown[] }) => Promise<unknown>;
+	const request = ctx.client.request as unknown as (args: {
+		method: string;
+		params: unknown[];
+	}) => Promise<unknown>;
 	return (await request({ method, params })) as T;
 }
 
 /** Revert reason of a mined, failed transaction, read from Anvil's call trace. */
-export async function traceRevert(ctx: DemoContext, hash: Hex, target: Address): Promise<DecodedRevert | null> {
+export async function traceRevert(
+	ctx: DemoContext,
+	hash: Hex,
+	target: Address
+): Promise<DecodedRevert | null> {
 	try {
-		const trace = await rpc<{ output?: Hex }>(ctx, 'debug_traceTransaction', [hash, { tracer: 'callTracer' }]);
+		const trace = await rpc<{ output?: Hex }>(ctx, 'debug_traceTransaction', [
+			hash,
+			{ tracer: 'callTracer' }
+		]);
 		return decodeRevert(trace.output, ctx.logContext, target);
 	} catch {
 		return null;
@@ -105,8 +120,7 @@ export type ReadCall = {
 };
 
 export type ReadResult =
-	| { ok: true; value: unknown }
-	| { ok: false; notImplemented: boolean; revert: DecodedRevert };
+	{ ok: true; value: unknown } | { ok: false; notImplemented: boolean; revert: DecodedRevert };
 
 /** One Multicall3.aggregate3 at a pinned block; each call may fail on its own. */
 export async function readMany(
@@ -117,7 +131,11 @@ export async function readMany(
 	const encoded = calls.map((c) => ({
 		target: c.address,
 		allowFailure: true,
-		callData: encodeFunctionData({ abi: c.abi, functionName: c.functionName, args: c.args ?? [] } as never)
+		callData: encodeFunctionData({
+			abi: c.abi,
+			functionName: c.functionName,
+			args: c.args ?? []
+		} as never)
 	}));
 	const results = (await ctx.client.readContract({
 		address: MULTICALL3,

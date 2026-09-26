@@ -22,7 +22,10 @@ type AbiEntry = {
 };
 type Artifact = {
 	abi: AbiEntry[];
-	metadata?: { settings?: { compilationTarget?: Record<string, string> }; sources?: Record<string, { keccak256?: string }> };
+	metadata?: {
+		settings?: { compilationTarget?: Record<string, string> };
+		sources?: Record<string, { keccak256?: string }>;
+	};
 };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -119,7 +122,9 @@ async function loadArtifact(path: string): Promise<Artifact> {
 	try {
 		return JSON.parse(await readFile(full, 'utf8')) as Artifact;
 	} catch (cause) {
-		throw new Error(`cannot read ${full}; run \`forge build\` in contracts/ first`, { cause });
+		throw new Error(`cannot read ${full}; run \`forge build\` in contracts/ before this script`, {
+			cause
+		});
 	}
 }
 
@@ -131,7 +136,9 @@ async function assertFresh(label: string, artifact: Artifact): Promise<void> {
 	const expected = artifact.metadata?.sources?.[source]?.keccak256;
 	const actual = keccak256(toBytes(await readFile(join(CONTRACTS, source), 'utf8')));
 	if (expected !== actual) {
-		throw new Error(`${label}: contracts/out is stale for ${source}; run \`forge build\` in contracts/`);
+		throw new Error(
+			`${label}: contracts/out is stale for ${source}; run \`forge build\` in contracts/`
+		);
 	}
 }
 
