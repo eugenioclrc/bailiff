@@ -14,16 +14,21 @@
 		return showFull || log.swap?.canonical === true;
 	}
 
-	function argText(log: DecodedLog, arg: DecodedArg): string {
+	/** A role name stays in the body face; only the hex beside it is set in mono (DESIGN.md). */
+	type ArgShown = { label?: string; hex?: string; text?: string };
+
+	function argShown(log: DecodedLog, arg: DecodedArg): ArgShown {
 		const full = isFull(log);
 		if (arg.type === 'address') {
-			if (full) return arg.label ? `${arg.label} ${arg.value}` : arg.value;
-			return arg.label ?? shortAddress(arg.value);
+			if (full) return { label: arg.label, hex: arg.value };
+			return arg.label ? { label: arg.label } : { hex: shortAddress(arg.value) };
 		}
-		if (arg.type === 'bytes32') return full ? arg.value : `${arg.value.slice(0, 10)}…`;
+		if (arg.type === 'bytes32') return { hex: full ? arg.value : `${arg.value.slice(0, 10)}…` };
 		if (/^-?\d+$/.test(arg.value))
-			return formatUnit(arg.value, argUnit(log.emitter, log.event, arg.name, rwaIsCurrency0));
-		return arg.value;
+			return {
+				text: formatUnit(arg.value, argUnit(log.emitter, log.event, arg.name, rwaIsCurrency0))
+			};
+		return { text: arg.value };
 	}
 
 	function swapText(log: DecodedLog): string {
@@ -76,16 +81,12 @@
 					</td>
 					<td class="args">
 						{#each log.args as arg (arg.name)}
+							{@const shown = argShown(log, arg)}
 							<span class="arg" title={arg.value}
 								><span class="key">{arg.name}</span>
-								<span
-									class={[
-										'num',
-										{
-											code: isFull(log) && (arg.type === 'address' || arg.type === 'bytes32')
-										}
-									]}>{argText(log, arg)}</span
-								></span
+								{#if shown.label}{shown.label}{/if}
+								{#if shown.hex}<code>{shown.hex}</code>{/if}
+								{#if shown.text !== undefined}<span class="num">{shown.text}</span>{/if}</span
 							>
 						{/each}
 					</td>
