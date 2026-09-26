@@ -29,14 +29,15 @@
 		if (demo.stale) return demo.loadError ? 'unread' : 'predates';
 		return navStale ? 'stale' : healthStatus(s?.market.healthFactor);
 	});
+	/* Each fits two lines beside the 30px figure at 1280x720, so the card never grows. */
 	const STATUS_TEXT = {
 		healthy: 'Healthy: HF at or above 1',
 		liquidatable: 'Liquidatable: HF below 1',
 		'no-debt': 'healthFactor() returns max uint256 at zero debt',
 		unknown: 'Health factor unavailable',
 		stale: 'NAV is stale: MiniLend would revert StaleNav',
-		predates: 'Predates the last action; re-reading',
-		unread: 'Predates the last action; the re-read failed'
+		predates: 'Re-reading after the last action',
+		unread: 'Not re-read since the last action'
 	} as const;
 
 	let token = $derived.by((): Shown => {
@@ -100,9 +101,13 @@
 		font-size: 12.5px;
 	}
 
+	/*
+	 * Bottom-aligned, not on the baseline: a two-line status then fits the 30px figure's box exactly,
+	 * where baseline alignment hung its second line below it and grew the whole role row.
+	 */
 	dd {
 		display: flex;
-		align-items: baseline;
+		align-items: flex-end;
 		gap: 10px;
 	}
 
