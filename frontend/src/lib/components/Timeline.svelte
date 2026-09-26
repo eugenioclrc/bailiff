@@ -51,7 +51,7 @@
 		{#if demo.timeline.length === 0}
 			<p class="empty">
 				No actions recorded in this tab since the last reset. Actions sent from another tab are in
-				the evidence log. Start with the issuer: cut NAV to 85.
+				the server evidence log (EVIDENCE_FILE). Start with the issuer: cut NAV to 85.
 			</p>
 		{:else}
 			<ol>

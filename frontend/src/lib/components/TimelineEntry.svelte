@@ -63,8 +63,8 @@
 			<p class="body">
 				Would repay and pay the keeper a bounty of
 				<span class="num">{formatUnit(item.quote.bounty, 'usdc')}</span> USDC, simulated on the
-				block after <span class="num">{item.block}</span>. Recorded on this page only; no
-				transaction.
+				block after <span class="num">{item.block}</span>. Also appended to the server evidence log
+				(EVIDENCE_FILE) as an eth_call; no transaction.
 			</p>
 		{:else if item.quote.revert}
 			<RevertChain revert={item.quote.revert} />
@@ -99,13 +99,11 @@
 
 		{#if detail.quote}
 			<p class="body">
-				Quoted bounty <span class="num">{formatUnit(detail.quote.bounty, 'usdc')}</span> USDC;
-				{#if response.status === 'mined'}
-					sent with minBounty
-					<span class="num">{formatUnit(detail.quote.minBounty, 'usdc')}</span> USDC (97%), re-simulated
+				Quoted bounty <span class="num">{formatUnit(detail.quote.bounty, 'usdc')}</span>
+				USDC{#if response.status === 'mined'}. Re-simulated with minBounty
+					<span class="num">{formatUnit(detail.quote.minBounty, 'usdc')}</span> USDC (97%), then sent
 					with those exact arguments.
-				{:else}
-					prepared minBounty
+				{:else}; prepared minBounty
 					<span class="num">{formatUnit(detail.quote.minBounty, 'usdc')}</span> USDC (97%); nothing was
 					sent.
 				{/if}
