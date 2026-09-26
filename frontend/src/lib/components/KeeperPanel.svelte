@@ -127,9 +127,11 @@
 </Panel>
 
 <style>
+	/* start: a note under one button must not stretch its neighbour to the row height. */
 	.pair {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
+		align-items: start;
 		gap: 6px;
 	}
 
