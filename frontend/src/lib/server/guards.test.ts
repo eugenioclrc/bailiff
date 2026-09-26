@@ -98,9 +98,9 @@ describe('assertNotCrossOrigin', () => {
 		expect(
 			statusOf(() => assertNotCrossOrigin('http://127.0.0.1:5173', 'http://127.0.0.1:5173'))
 		).toBe(200);
-		expect(statusOf(() => assertNotCrossOrigin('http://localhost:3000', 'http://127.0.0.1:5173'))).toBe(
-			403
-		);
+		expect(
+			statusOf(() => assertNotCrossOrigin('http://localhost:3000', 'http://127.0.0.1:5173'))
+		).toBe(403);
 	});
 });
 
@@ -136,7 +136,11 @@ describe('readCappedBody', () => {
 				cancelled = true;
 			}
 		});
-		const request = new Request(url, { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
+		const request = new Request(url, {
+			method: 'POST',
+			body: stream,
+			duplex: 'half'
+		} as RequestInit);
 		await expect(readCappedBody(request)).rejects.toMatchObject({ status: 413 });
 		expect(cancelled).toBe(true);
 		expect(chunksServed).toBeLessThan(10);

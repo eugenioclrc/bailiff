@@ -260,7 +260,9 @@ function checkAddresses(addresses: Record<AddressField, Address>): void {
 function parseTransactions(obj: Record<string, unknown>): Hex[] {
 	const value = obj.deployTransactions;
 	if (!Array.isArray(value) || !value.every((h) => typeof h === 'string' && BYTES32.test(h))) {
-		throw new ConfigError('manifest deployTransactions must be a list of 32-byte transaction hashes.');
+		throw new ConfigError(
+			'manifest deployTransactions must be a list of 32-byte transaction hashes.'
+		);
 	}
 	return value as Hex[];
 }

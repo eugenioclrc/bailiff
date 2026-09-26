@@ -75,7 +75,9 @@ describe('liquidateFull / liquidateChunk', () => {
 	test('a failed re-simulation sends nothing', async () => {
 		const fake = fakeContext({
 			call: (_args, i) =>
-				i === 0 ? Promise.resolve({ data: bountyOf(600_000_000n) }) : Promise.reject(revertWith(healthy))
+				i === 0
+					? Promise.resolve({ data: bountyOf(600_000_000n) })
+					: Promise.reject(revertWith(healthy))
 		});
 		const response = await runAction(fake.ctx, 'liquidateChunk');
 		expect(response.status).toBe('simulation-reverted');
@@ -148,7 +150,10 @@ describe('horizon', () => {
 			account: fake.ctx.manifest.keeper,
 			to: fake.ctx.manifest.market
 		});
-		const { functionName, args } = decodeFunctionData({ abi: miniLendAbi, data: fake.calls[0].data! });
+		const { functionName, args } = decodeFunctionData({
+			abi: miniLendAbi,
+			data: fake.calls[0].data!
+		});
 		expect(functionName).toBe('liquidate');
 		expect(args).toEqual([fake.ctx.manifest.borrower, maxUint256, '0x']);
 		expect(fake.sent).toEqual([]);
@@ -167,7 +172,10 @@ describe('signed actions', () => {
 		const response = await runAction(fake.ctx, 'crash');
 		expect(response.status).toBe('mined');
 		expect(fake.sent[0]).toMatchObject({ role: 'issuer', to: fake.ctx.manifest.market });
-		const { functionName, args } = decodeFunctionData({ abi: miniLendAbi, data: fake.sent[0].data });
+		const { functionName, args } = decodeFunctionData({
+			abi: miniLendAbi,
+			data: fake.sent[0].data
+		});
 		expect([functionName, args]).toEqual(['setNav', [85n * 10n ** 18n]]);
 	});
 

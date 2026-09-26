@@ -93,7 +93,9 @@ export function fakeContext(options: FakeOptions = {}): Fake {
 			...options.receipt
 		}),
 		readContract: () =>
-			options.readContract ? options.readContract() : Promise.reject(new Error('no reads scripted')),
+			options.readContract
+				? options.readContract()
+				: Promise.reject(new Error('no reads scripted')),
 		getBlock: async () => ({ number: 101n, timestamp: 1_790_000_000n, hash: TX_HASH })
 	};
 	const wallet = (role: Role) => ({

@@ -14,7 +14,11 @@ import { fakeContext } from './context.test-helpers';
 
 const { ctx } = fakeContext();
 const MARKET = ctx.manifest.market;
-const healthy = encodeErrorResult({ abi: errorsAbi, errorName: 'Healthy', args: [2n * 10n ** 18n] });
+const healthy = encodeErrorResult({
+	abi: errorsAbi,
+	errorName: 'Healthy',
+	args: [2n * 10n ** 18n]
+});
 const rpcRevert = (data: Hex) =>
 	new RpcRequestError({
 		body: { method: 'eth_call' },

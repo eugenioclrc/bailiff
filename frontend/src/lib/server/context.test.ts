@@ -18,7 +18,9 @@ function probe(overrides: {
 			if (overrides.nodeInfo instanceof Error) throw overrides.nodeInfo;
 			return overrides.nodeInfo ?? { forkConfig: { forkBlockNumber: 11782723 } };
 		}) as unknown as AnvilProbe['request'],
-		getBlock: (async () => ({ hash: overrides.hash ?? manifest.forkBlockHash })) as unknown as AnvilProbe['getBlock'],
+		getBlock: (async () => ({
+			hash: overrides.hash ?? manifest.forkBlockHash
+		})) as unknown as AnvilProbe['getBlock'],
 		getCode: (async ({ address }: { address: Address }) =>
 			address === overrides.noCodeAt ? undefined : '0x6080') as AnvilProbe['getCode']
 	};
@@ -61,7 +63,9 @@ describe('assertLocalAnvil', () => {
 	});
 
 	test('names contracts without code, e.g. after an Anvil restart without a redeploy', async () => {
-		const message = await messageOf(assertLocalAnvil(probe({ noCodeAt: manifest.adapter }), manifest));
+		const message = await messageOf(
+			assertLocalAnvil(probe({ noCodeAt: manifest.adapter }), manifest)
+		);
 		expect(message).toContain('adapter');
 		expect(message).toContain('O4');
 	});

@@ -1,9 +1,5 @@
 import { loadContext } from '$lib/server/context';
-import {
-	assertLoopbackClient,
-	assertLoopbackHost,
-	assertNotCrossOrigin
-} from '$lib/server/guards';
+import { assertLoopbackClient, assertLoopbackHost, assertNotCrossOrigin } from '$lib/server/guards';
 import { fail, ok } from '$lib/server/respond';
 import { readState } from '$lib/server/state';
 import type { RequestHandler } from './$types';

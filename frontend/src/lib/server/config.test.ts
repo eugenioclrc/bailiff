@@ -194,7 +194,10 @@ describe('parseManifest', () => {
 	});
 
 	test('O2 fixed values are enforced', () => {
-		expectConfigError(() => parseManifest({ ...manifest, initialLiquidity: '1' }), 'initialLiquidity');
+		expectConfigError(
+			() => parseManifest({ ...manifest, initialLiquidity: '1' }),
+			'initialLiquidity'
+		);
 		expectConfigError(() => parseManifest({ ...manifest, keeperBps: 20_000 }), 'keeperBps');
 	});
 

@@ -40,9 +40,9 @@ describe('POST /api/action guards', () => {
 
 	test('a non-loopback client or Host is 403', async () => {
 		expect((await post({ client: '192.168.1.20' })).status).toBe(403);
-		expect((await post({ host: 'rebind.example:5173', origin: 'http://rebind.example:5173' })).status).toBe(
-			403
-		);
+		expect(
+			(await post({ host: 'rebind.example:5173', origin: 'http://rebind.example:5173' })).status
+		).toBe(403);
 	});
 
 	test('text/plain is 415', async () => {

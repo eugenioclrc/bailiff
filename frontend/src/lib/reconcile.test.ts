@@ -77,7 +77,12 @@ describe('reconcileLiquidation', () => {
 	test('adapter RWA and USDC leftovers are checked apart, so opposite signs cannot cancel', () => {
 		const logs = decodeLogs(preFixLiquidationLogs(), logContext);
 		const start = { ...before, adapterUsdc: 5n };
-		const result = reconcileLiquidation(logs, start, after({ adapterRwa: 5n, adapterUsdc: 0n }), ctx);
+		const result = reconcileLiquidation(
+			logs,
+			start,
+			after({ adapterRwa: 5n, adapterUsdc: 0n }),
+			ctx
+		);
 		const checks = checkMap(result.checks);
 		expect(checks['adapter-rwa']).toBe(false);
 		expect(checks['adapter-usdc']).toBe(true);

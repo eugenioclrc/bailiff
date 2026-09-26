@@ -171,7 +171,11 @@ describe('decodeRevert', () => {
 		);
 		expect(partial.message).toContain('sold=935.2941 RWA');
 		const healthy = decodeRevert(
-			encodeErrorResult({ abi: errorsAbi, errorName: 'Healthy', args: [1_066_666_666_666_666_666n] }),
+			encodeErrorResult({
+				abi: errorsAbi,
+				errorName: 'Healthy',
+				args: [1_066_666_666_666_666_666n]
+			}),
 			ctx
 		);
 		expect(healthy.message).toContain('hf=1.0667');
