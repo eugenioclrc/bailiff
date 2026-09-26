@@ -57,6 +57,11 @@ make Vite reload the page. The timeline survives a reload in the same tab (sessi
 reload mid-scene still breaks the take. Stop any keeper process before using the page; both would
 sign with the keeper key.
 
+Record in a real 1280x720 viewport (Chrome started with `--window-size=1280,720 --kiosk`, or the
+DevTools device toolbar), not in a 1280x720 window: the browser's own bars take their height from
+the timeline. For the receipt scene, "Show evidence full height" hides the role panels so the
+timeline grows while the band stays on screen.
+
 ## After the contract fix
 
 When the fixed contracts are redeployed, rerun the local deploy and seed (it rewrites the manifest

@@ -13,6 +13,8 @@
 	const POLL_MS = 15_000;
 
 	const demo = new Demo();
+	/** Evidence view for the 3:10 scene: the role row steps aside and the timeline takes its height. */
+	let evidenceFull = $state(false);
 
 	onMount(() => {
 		void demo.refresh();
@@ -31,7 +33,7 @@
 	/>
 </svelte:head>
 
-<div class="page">
+<div class="page" data-focus={evidenceFull ? 'timeline' : undefined}>
 	<!-- One grid row for header and banner, so the board always gets the remaining height. -->
 	<div class="top">
 		<AppHeader {demo} />
@@ -55,7 +57,7 @@
 		<div data-stale={demo.stale} aria-busy={demo.stale && demo.loading}>
 			<MarketBand {demo} />
 		</div>
-		<Timeline {demo} />
+		<Timeline {demo} bind:fullHeight={evidenceFull} />
 	</main>
 
 	<p class="visually-hidden" aria-live="polite">{demo.announcement}</p>
@@ -88,6 +90,15 @@
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1.1fr);
 		gap: 10px;
+	}
+
+	/* The timeline stays below the band (O5); only the role row makes room for it. */
+	.page[data-focus='timeline'] .roles {
+		display: none;
+	}
+
+	.page[data-focus='timeline'] .board {
+		grid-template-rows: auto minmax(0, 1fr);
 	}
 
 	.banner {

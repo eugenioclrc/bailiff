@@ -2,7 +2,13 @@
 	import type { Demo } from '$lib/demo.svelte';
 	import TimelineEntry from './TimelineEntry.svelte';
 
-	let { demo }: { demo: Demo } = $props();
+	type Props = {
+		demo: Demo;
+		/** The page hides the role panels while this is on, so the receipts get the height. */
+		fullHeight: boolean;
+	};
+
+	let { demo, fullHeight = $bindable() }: Props = $props();
 
 	let rwaIsCurrency0 = $derived(demo.state?.rwaIsCurrency0 ?? true);
 
@@ -17,6 +23,12 @@
 	<header>
 		<h2 id="timeline-title">Timeline</h2>
 		<p>Newest first. Mined transactions, simulations and local resets are marked apart.</p>
+		<button
+			type="button"
+			class="evidence-toggle"
+			aria-pressed={fullHeight}
+			onclick={() => (fullHeight = !fullHeight)}>Show evidence full height</button
+		>
 		{#if demo.state}
 			<p class="ids">
 				Manifest pool id <code>{demo.state.poolId}</code>, hook
@@ -105,6 +117,29 @@
 	 * they are clipped here instead of stretching the page. contain stops wheel scroll chaining,
 	 * and overflow-anchor: none lets a new top entry push older ones down rather than hide itself.
 	 */
+	.evidence-toggle {
+		order: 1;
+		margin-left: auto;
+		padding: 3px 10px;
+		border: 1px solid var(--color-rule);
+		border-radius: 4px;
+		background: var(--color-sheet);
+		color: var(--color-ink);
+		font: 600 12px/1.2 var(--font-body);
+		cursor: pointer;
+	}
+
+	.evidence-toggle[aria-pressed='true'] {
+		border-color: var(--color-ink);
+		background: var(--color-ink);
+		color: var(--color-sheet);
+	}
+
+	.ids {
+		order: 2;
+		flex-basis: 100%;
+	}
+
 	.scroll {
 		position: relative;
 		min-height: 120px;
@@ -170,9 +205,29 @@
 		font-weight: 600;
 	}
 
+	/*
+	 * At the demo resolution the scroller cuts entries mid-line; the fade says the text goes on.
+	 * The bottom pad keeps the last line clear of the fade once scrolled to the end, and the fade
+	 * drops while the region has keyboard focus, since the mask would also hide its outline.
+	 */
+	@media (min-width: 1101px) {
+		.scroll {
+			padding-bottom: 24px;
+			mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+		}
+
+		.scroll:focus-visible {
+			mask-image: none;
+		}
+	}
+
 	@media (max-width: 1100px), (pointer: coarse) {
 		.archive > summary {
 			padding-block: 14px;
+		}
+
+		.evidence-toggle {
+			min-height: 44px;
 		}
 	}
 </style>
