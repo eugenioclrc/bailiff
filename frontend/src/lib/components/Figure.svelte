@@ -56,10 +56,20 @@
 		font-size: 11.5px;
 	}
 
+	/* A real status, not a value: a neutral outlined badge in the local-reset grey, never the accent. */
 	.missing {
-		color: var(--color-caution);
-		font-style: italic;
 		font-size: 12px;
+	}
+
+	.missing span {
+		display: inline-block;
+		line-height: 1.15;
+		padding: 0 5px;
+		border: 1px solid var(--color-reset);
+		border-radius: 3px;
+		color: var(--color-ink-2);
+		font-size: 11.5px;
+		white-space: nowrap;
 	}
 
 	.failed {

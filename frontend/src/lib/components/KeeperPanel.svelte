@@ -99,8 +99,8 @@
 			<ActionButton {demo} action="probe" tone="quiet" />
 		</div>
 		<div class="pair">
-			<ActionButton {demo} action="liquidateFull" {blockedBy} />
-			<ActionButton {demo} action="liquidateChunk" {blockedBy} />
+			<ActionButton {demo} action="liquidateFull" tone="accent" {blockedBy} />
+			<ActionButton {demo} action="liquidateChunk" tone="accent" {blockedBy} />
 		</div>
 	{/snippet}
 </Panel>

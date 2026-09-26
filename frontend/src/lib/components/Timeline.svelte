@@ -120,7 +120,7 @@
 		order: 1;
 		margin-left: auto;
 		padding: 3px 10px;
-		border: 1px solid var(--color-rule);
+		border: 1px solid var(--color-steel);
 		border-radius: 4px;
 		background: var(--color-sheet);
 		color: var(--color-ink);
@@ -206,7 +206,7 @@
 		padding: 1px 7px;
 		border-radius: 3px;
 		background: var(--color-reset);
-		color: var(--color-steel-ink);
+		color: #fff;
 		font-weight: 600;
 	}
 

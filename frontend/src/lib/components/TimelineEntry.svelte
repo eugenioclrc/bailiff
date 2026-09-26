@@ -143,14 +143,14 @@
 		padding: 8px 10px 8px 12px;
 		background: var(--color-sheet);
 		border: 1px solid var(--color-rule);
-		border-left: 4px solid var(--color-steel);
+		border-left: 4px solid var(--color-ok);
 		border-radius: 4px;
 	}
 
+	/* A simulation is marked by shape only: a dashed edge and an outlined badge, no fill. */
 	.simulation {
 		border-left-style: dashed;
-		border-left-color: var(--color-sim);
-		background: color-mix(in srgb, var(--color-sim) 4%, var(--color-sheet));
+		border-left-color: var(--color-steel);
 	}
 
 	.reset {
@@ -174,14 +174,14 @@
 		border-radius: 3px;
 		font-size: 11.5px;
 		font-weight: 600;
-		color: var(--color-steel-ink);
-		background: var(--color-steel);
+		color: #fff;
+		background: var(--color-ok);
 	}
 
 	.simulation .tag {
 		background: transparent;
-		color: var(--color-sim);
-		border: 1px dashed var(--color-sim);
+		color: var(--color-steel);
+		border: 1px dashed var(--color-steel);
 	}
 
 	.reset .tag {

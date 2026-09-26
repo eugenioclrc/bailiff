@@ -136,7 +136,7 @@
 		grid-template-columns: minmax(0, 1fr) auto;
 		border-radius: 4px;
 		overflow: hidden;
-		border: 1px solid var(--color-steel-deep);
+		border: 1px solid var(--color-steel);
 	}
 
 	h2 {
@@ -176,7 +176,7 @@
 	}
 
 	.prices dd.missing {
-		color: var(--color-caution);
+		color: var(--color-ink-2);
 	}
 
 	.prices dd.failed {
@@ -198,7 +198,7 @@
 	}
 
 	.totals .missing {
-		color: var(--color-caution);
+		color: var(--color-ink-2);
 		font-style: italic;
 	}
 
@@ -214,7 +214,7 @@
 		row-gap: 3px;
 		padding: 7px 12px;
 		background: var(--color-steel);
-		color: var(--color-steel-ink);
+		color: #fff;
 	}
 
 	.custody h2 {
@@ -263,7 +263,7 @@
 	.outside {
 		gap: 16px;
 		padding-left: 16px;
-		border-left: 1px solid color-mix(in srgb, var(--color-steel-ink) 35%, transparent);
+		border-left: 1px solid color-mix(in srgb, #fff 35%, transparent);
 	}
 
 	.name {

@@ -101,14 +101,15 @@
 		text-align: right;
 	}
 
+	/* Its words say what is wrong; weight, not a hue, sets it apart from the normal sync line. */
 	.sync.warn {
-		color: var(--color-caution);
+		font-weight: 600;
 	}
 
 	.refresh {
 		min-height: 30px;
 		padding: 5px 10px;
-		border: 1px solid var(--color-rule);
+		border: 1px solid var(--color-steel);
 		border-radius: 4px;
 		background: var(--color-sheet);
 		color: var(--color-ink);

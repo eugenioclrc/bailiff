@@ -122,8 +122,9 @@
 		color: var(--color-alert);
 	}
 
+	/* Muted red, like a revert: a stale NAV blocks liquidation outright. */
 	[data-status='stale'] .status,
 	[data-status='stale'] .big {
-		color: var(--color-caution);
+		color: var(--color-alert);
 	}
 </style>

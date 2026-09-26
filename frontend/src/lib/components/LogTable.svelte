@@ -100,7 +100,7 @@
 	.values-toggle {
 		margin: 4px 0 2px;
 		padding: 2px 8px;
-		border: 1px solid var(--color-rule);
+		border: 1px solid var(--color-steel);
 		border-radius: 4px;
 		background: var(--color-sheet);
 		color: var(--color-ink);

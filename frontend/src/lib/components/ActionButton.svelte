@@ -8,7 +8,8 @@
 		action: ControlName;
 		/** Id of an element, rendered once by the panel, that explains why this action is blocked. */
 		blockedBy?: string | null;
-		tone?: 'primary' | 'quiet' | 'warn';
+		/** accent is reserved for the two liquidate actions: the moment the demo is about. */
+		tone?: 'primary' | 'accent' | 'quiet' | 'warn';
 	};
 
 	let { demo, action, blockedBy = null, tone = 'primary' }: Props = $props();
@@ -53,24 +54,37 @@
 		min-width: 0;
 	}
 
+	/* Ink for the role actions that change the chain; the ochre accent only on the liquidations. */
 	.action {
 		width: 100%;
 		min-height: 29px;
 		padding: 5px 8px;
-		border: 1px solid var(--color-steel);
+		border: 1px solid var(--color-ink);
 		border-radius: 4px;
-		background: var(--color-steel);
-		color: var(--color-steel-ink);
+		background: var(--color-ink);
+		color: var(--color-sheet);
 		font: 600 12.5px/1.2 var(--font-body);
 		text-align: left;
 		cursor: pointer;
 	}
 
 	.action:hover:not([aria-disabled='true']) {
-		background: var(--color-steel-deep);
+		background: color-mix(in srgb, var(--color-ink) 82%, var(--color-sheet));
 	}
 
+	.accent {
+		border-color: var(--color-accent);
+		background: var(--color-accent);
+		color: #fff;
+	}
+
+	.accent:hover:not([aria-disabled='true']) {
+		background: color-mix(in srgb, var(--color-accent) 85%, var(--color-ink));
+	}
+
+	/* Simulations and the reset: they send nothing that stays, so they stay in the background. */
 	.quiet {
+		border-color: var(--color-steel);
 		background: var(--color-sheet);
 		color: var(--color-steel);
 	}

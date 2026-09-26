@@ -1,25 +1,33 @@
 @import 'tailwindcss';
 
 /*
- * Bailiff console tokens. One light theme tuned for a projected 1280x720 recording.
- * Violet is reserved for simulations so they never read as mined transactions.
+ * Bailiff console tokens (DESIGN.md): ink on paper, steel, one ochre accent. One light theme tuned
+ * for a compressed 1280x720 recording. Ratios are WCAG contrast on the sheet unless noted.
+ * Simulations are told apart by shape (dashed edge, outlined badge), not by an extra hue.
  */
 @theme {
-	--color-ground: #e4e9ee;
-	--color-sheet: #fafbfc;
-	--color-ink: #122033;
-	--color-ink-2: #51606f;
-	--color-rule: #c4cdd6;
-	--color-steel: #1f4e79;
-	--color-steel-deep: #173b5c;
-	--color-steel-ink: #eef3f8;
-	--color-ok: #16704c;
-	--color-alert: #a8261b;
-	--color-caution: #8c5b00;
-	--color-sim: #5b3e9c;
-	--color-reset: #56626e;
-	/* 5.7:1 on sheet, 4.9:1 on ground: a focus ring must reach 3:1 (WCAG 1.4.11), on a projector too. */
-	--color-focus: #8a5a00;
+	/* Warm paper reads like a ledger and survives video compression better than pure white. */
+	--color-ground: #f4efe6;
+	--color-sheet: #fbf8f2;
+	/* Near-black ink for every live number: 16.25:1 on the sheet, 15.04:1 on the ground. */
+	--color-ink: #1c1b18;
+	/* Labels and context: 6.72:1 on the sheet, 6.22:1 on the ground. */
+	--color-ink-2: #5a5850;
+	/* Hairline between rows and panels only; never the edge of a control. */
+	--color-rule: #d4ccbe;
+	/* Muted blue-grey that pushes context back: quiet controls, inactive rail segments (5.81:1). */
+	--color-steel: #56636f;
+	/* Semantic only, never decoration: mined (5.96:1), reverts (6.84:1), local resets (5.12:1). */
+	--color-ok: #2e6b4d;
+	--color-alert: #9b3326;
+	--color-reset: #6b6a64;
+	/*
+	 * The RWA in motion: only the rail segments the seized RWA crossed and the two liquidate
+	 * buttons. 4.80:1 as text on the sheet; white on it 5.08:1. Never as text on the ground (4.44:1).
+	 */
+	--color-accent: #a85a08;
+	/* Ink, not the accent, so the accent keeps its one meaning; 16.25:1 against the sheet. */
+	--color-focus: #1c1b18;
 
 	--font-display: 'IBM Plex Sans', system-ui, sans-serif;
 	--font-figure: 'IBM Plex Sans', system-ui, sans-serif;
