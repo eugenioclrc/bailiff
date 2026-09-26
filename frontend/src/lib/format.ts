@@ -50,7 +50,16 @@ function groupThousands(digits: string): string {
 	return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** Fixed-point bigint to a grouped decimal string, rounded half up at `fraction` digits. */
+/** Smallest step shown at `fraction` digits, e.g. "0.0001" or "1". */
+function smallestStep(fraction: number): string {
+	return fraction > 0 ? `0.${'0'.repeat(fraction - 1)}1` : '1';
+}
+
+/**
+ * Fixed-point bigint to a grouped decimal string, rounded half up at `fraction` digits.
+ * A nonzero value that would round to zero shows as "<0.0001" (or ">-0.0001"), never as 0,
+ * so a leftover wei of inventory stays visible.
+ */
 export function formatFixed(value: bigint, decimals: number, fraction: number): string {
 	const negative = value < 0n;
 	const abs = negative ? -value : value;
@@ -62,10 +71,13 @@ export function formatFixed(value: bigint, decimals: number, fraction: number): 
 	} else {
 		scaled = abs * 10n ** BigInt(-drop);
 	}
+	if (abs > 0n && scaled === 0n) {
+		return `${negative ? '>-' : '<'}${smallestStep(fraction)}`;
+	}
 	const unit = 10n ** BigInt(fraction);
 	const whole = groupThousands((scaled / unit).toString());
 	const frac = fraction > 0 ? '.' + (scaled % unit).toString().padStart(fraction, '0') : '';
-	return `${negative ? '-' : ''}${whole}${frac}`;
+	return `${negative && scaled !== 0n ? '-' : ''}${whole}${frac}`;
 }
 
 export function formatUnit(value: string | bigint, unit: Unit, fraction?: number): string {
@@ -82,6 +94,8 @@ export function formatLiquidity(liquidity: bigint): string {
 	const digits = liquidity.toString();
 	const exponent = digits.length - 1;
 	const mantissa = formatFixed(BigInt(digits.slice(0, 4)), 3, 2);
+	// 9.995 rounds to 10.00: carry into the exponent instead of printing "10.00e18".
+	if (mantissa.startsWith('10.')) return `1.00e${exponent + 1}`;
 	return `${mantissa}e${exponent}`;
 }
 

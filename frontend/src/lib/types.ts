@@ -42,6 +42,8 @@ export type ErrorLayer = {
 	call?: string;
 	context?: string;
 	raw?: string;
+	/** WrappedError past the nesting limit: its reason was kept raw, not decoded. */
+	truncated?: boolean;
 };
 
 export type DecodedRevert = {
@@ -119,6 +121,8 @@ export type ActionDetail = {
 		logs: DecodedLog[];
 	};
 	reconciliation?: Reconciliation;
+	/** Set when the transaction mined but the balances around it could not be read. */
+	reconciliationError?: string;
 	revert?: DecodedRevert;
 	reset?: { revertedTo: string; blockNumber: string; blockTimestamp: string };
 };
@@ -158,7 +162,8 @@ export type Holder = {
 };
 
 export type Quote = { repayAssets: string } & (
-	{ ok: true; bounty: string } | { ok: false; error: { name: string; message: string } }
+	| { ok: true; bounty: string }
+	| { ok: false; error: { name: string; message: string }; revert?: DecodedRevert }
 );
 
 export type ChainState = {

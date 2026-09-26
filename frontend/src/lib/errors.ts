@@ -6,6 +6,7 @@
 import { decodeErrorResult, getAddress, isHex, size, slice, type Hex } from 'viem';
 import { errorSources, errorsAbi, functionNames } from './abis.generated';
 import type { DecodedArg, DecodedRevert, ErrorLayer } from './types';
+import { errorArgText } from './units';
 
 export type DecodeContext = {
 	/** lowercase address -> manifest role ("hook", "adapter", "keeper", ...) */
@@ -13,6 +14,18 @@ export type DecodeContext = {
 };
 
 const MAX_DEPTH = 8;
+
+/** Manifest role label -> the contract name used in errorSources, to rank the raising contract first. */
+const CONTRACT_OF_LABEL: Readonly<Record<string, string>> = {
+	hook: 'PermissionedHooks',
+	adapter: 'LiquidationAdapter',
+	market: 'MiniLend',
+	'RWA token': 'MockRWA3643',
+	PoolManager: 'PoolManager',
+	'pool wrapper (PA)': 'PermissionsAdapter',
+	desk: 'LiquidityDesk',
+	factory: 'PermissionsAdapterFactory'
+};
 
 const PANIC_REASONS: Record<string, string> = {
 	'1': 'assertion failed',
@@ -78,6 +91,15 @@ function describeContext(details: Hex): string {
 	}
 }
 
+/** Contracts whose ABI declares `selector`, with the contract at `target` (when known) first. */
+function declarersOf(selector: string, target: Target): string[] {
+	const sources = errorSources[selector] ? [...errorSources[selector]] : [];
+	const own = target?.label ? CONTRACT_OF_LABEL[target.label] : undefined;
+	if (!own) return sources;
+	const isOwn = (name: string) => name === own || name.startsWith(`${own} `);
+	return [...sources.filter(isOwn), ...sources.filter((name) => !isOwn(name))];
+}
+
 function emptyLayer(target: Target): ErrorLayer {
 	return {
 		kind: 'empty',
@@ -99,7 +121,7 @@ function unknownLayer(data: Hex, target: Target): ErrorLayer {
 		signature: null,
 		args: [],
 		target,
-		declaredBy: errorSources[selector] ? [...errorSources[selector]] : [],
+		declaredBy: declarersOf(selector, target),
 		raw: data
 	};
 }
@@ -128,9 +150,9 @@ function decodeLayers(
 		signature: signatureOf(decoded.errorName, inputs),
 		args: decodeArgs(inputs, values, ctx),
 		target,
-		declaredBy: errorSources[selector] ? [...errorSources[selector]] : []
+		declaredBy: declarersOf(selector, target)
 	};
-	if (decoded.errorName !== 'WrappedError' || depth >= MAX_DEPTH) return [base];
+	if (decoded.errorName !== 'WrappedError') return [base];
 
 	const [inner, callSelector, reason, details] = values as [string, Hex, Hex, Hex];
 	const wrapper: ErrorLayer = {
@@ -139,11 +161,14 @@ function decodeLayers(
 		call: functionNames[callSelector] ?? callSelector,
 		context: describeContext(details)
 	};
+	// Past the limit the reason stays raw; the layer says so instead of pretending it is the cause.
+	if (depth >= MAX_DEPTH) return [{ ...wrapper, truncated: true, raw: reason }];
 	return [wrapper, ...decodeLayers(reason, toTarget(inner, ctx), ctx, depth + 1)];
 }
 
 function argText(arg: DecodedArg): string {
-	return arg.label ? `${arg.name}=${arg.label} ${arg.value}` : `${arg.name}=${arg.value}`;
+	if (arg.label) return `${arg.name}=${arg.label} ${arg.value}`;
+	return `${arg.name}=${errorArgText(arg.name, arg.value) ?? arg.value}`;
 }
 
 function targetText(target: Target): string {
@@ -162,6 +187,9 @@ function shortCall(call: string | undefined): string {
 function leafText(layer: ErrorLayer): string {
 	if (layer.kind === 'empty') return 'reverted without error data';
 	if (layer.kind === 'unknown') return `unknown error ${layer.selector} (raw data kept)`;
+	if (layer.truncated) {
+		return `WrappedError nested deeper than ${MAX_DEPTH} levels; the inner reason was not decoded (raw data kept)`;
+	}
 	if (layer.name === 'Panic') {
 		const code = layer.args[0]?.value ?? '';
 		return `Panic(${code}): ${PANIC_REASONS[code] ?? 'unknown panic code'}`;
@@ -183,7 +211,7 @@ export function decodeRevert(
 ): DecodedRevert {
 	const layers = decodeLayers(data, toTarget(target, ctx), ctx, 0);
 	const cause = layers[layers.length - 1];
-	const wrappers = layers.filter((l) => l.kind === 'wrapped');
+	const wrappers = layers.slice(0, -1).filter((l) => l.kind === 'wrapped');
 	const declared = cause.declaredBy.length ? ` [declared by ${cause.declaredBy.join(', ')}]` : '';
 	// Only a WrappedError names the reverting contract; otherwise the error may have bubbled up.
 	const origin = wrappers.length

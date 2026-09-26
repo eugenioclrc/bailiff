@@ -11,6 +11,8 @@ import type {
 	Unit
 } from './types';
 
+export { argUnit } from './units';
+
 export type Tone = 'value' | 'missing' | 'failed';
 export type Shown = { text: string; tone: Tone };
 
@@ -66,39 +68,6 @@ const EMITTER_NAMES: Record<string, string> = {
 
 export function emitterName(key: string): string {
 	return EMITTER_NAMES[key] ?? key;
-}
-
-const USDC_ARGS = new Set([
-	'repaid',
-	'proceeds',
-	'bounty',
-	'residual',
-	'badDebt',
-	'debtRepaid',
-	'badDebtRecovered',
-	'borrowerCredit',
-	'assets'
-]);
-
-/** Which decimals an event argument is expressed in, so amounts render in token units. */
-export function argUnit(
-	emitter: string,
-	event: string | null,
-	arg: string,
-	rwaIsCurrency0: boolean
-): Unit {
-	if (event === 'Transfer' && arg === 'value') {
-		if (emitter === 'usdc') return 'usdc';
-		if (emitter === 'rwa' || emitter === 'pa') return 'rwa';
-	}
-	if (event === 'Swap' && (arg === 'amount0' || arg === 'amount1')) {
-		const rwaSide = rwaIsCurrency0 ? 'amount0' : 'amount1';
-		return arg === rwaSide ? 'rwa' : 'usdc';
-	}
-	if (event === 'NavUpdated' && arg === 'nav') return 'wad';
-	if (arg === 'seized') return 'rwa';
-	if (USDC_ARGS.has(arg)) return 'usdc';
-	return 'raw';
 }
 
 export function statusLabel(response: ActionResponse): string {

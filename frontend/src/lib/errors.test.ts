@@ -125,6 +125,57 @@ describe('decodeRevert', () => {
 	test('a selector shorter than four bytes is unknown, not a crash', () => {
 		expect(decodeRevert('0x1234', ctx).name).toBe('UnknownError');
 	});
+
+	test('a wrapper whose details carry an unknown selector keeps that selector as context', () => {
+		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, unauthorized, '0xdeadbeef'), ctx);
+		expect(decoded.layers[0].context).toBe('0xdeadbeef');
+		expect(decoded.name).toBe('Unauthorized');
+	});
+
+	test('nesting deeper than eight wrappers is cut off and marked, not decoded forever', () => {
+		let data: Hex = unauthorized;
+		for (let i = 0; i < 10; i += 1) data = wrapped(HOOK, BEFORE_SWAP, data, HOOK_CALL_FAILED);
+		const decoded = decodeRevert(data, ctx);
+		expect(decoded.layers).toHaveLength(9);
+		const last = decoded.layers[8];
+		expect(last.kind).toBe('wrapped');
+		expect(last.truncated).toBe(true);
+		expect(last.raw).toBeDefined();
+		expect(decoded.name).toBe('WrappedError');
+		expect(decoded.message).toContain('not decoded');
+	});
+
+	test('the contract that raised the error is listed first among its declarers', () => {
+		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, unauthorized, HOOK_CALL_FAILED), ctx);
+		expect(decoded.layers[1].declaredBy[0]).toBe('PermissionedHooks');
+		expect(decoded.message).toContain('declared by PermissionedHooks');
+	});
+
+	test('the message shows token amounts in token units, the layer keeps raw values', () => {
+		const data = encodeErrorResult({
+			abi: errorsAbi,
+			errorName: 'InsufficientProceeds',
+			args: [67_916_346_056n, 75_000_000_000n]
+		});
+		const decoded = decodeRevert(data, ctx);
+		expect(decoded.message).toContain('proceeds=67,916.35 USDC');
+		expect(decoded.message).toContain('repaid=75,000.00 USDC');
+		expect(decoded.layers[0].args[0].value).toBe('67916346056');
+		const partial = decodeRevert(
+			encodeErrorResult({
+				abi: errorsAbi,
+				errorName: 'PartialFill',
+				args: [935_294_117_647_058_823_529n, 1_000n * 10n ** 18n]
+			}),
+			ctx
+		);
+		expect(partial.message).toContain('sold=935.2941 RWA');
+		const healthy = decodeRevert(
+			encodeErrorResult({ abi: errorsAbi, errorName: 'Healthy', args: [1_066_666_666_666_666_666n] }),
+			ctx
+		);
+		expect(healthy.message).toContain('hf=1.0667');
+	});
 });
 
 describe('extractRevertData', () => {

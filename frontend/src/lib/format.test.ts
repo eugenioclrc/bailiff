@@ -76,6 +76,20 @@ describe('formatFixed', () => {
 		expect(formatFixed(-1_500_000n, 6, 2)).toBe('-1.50');
 		expect(formatFixed(1_234_567n, 0, 0)).toBe('1,234,567');
 	});
+
+	test('nonzero dust never renders as zero', () => {
+		expect(formatFixed(1n, 18, 4)).toBe('<0.0001');
+		expect(formatFixed(-1n, 18, 4)).toBe('>-0.0001');
+		expect(formatFixed(4_999n, 6, 2)).toBe('<0.01');
+		expect(formatFixed(1n, 6, 0)).toBe('<1');
+		expect(formatFixed(-1n, 6, 0)).toBe('>-1');
+	});
+
+	test('a value that rounds up to the last digit keeps its sign', () => {
+		expect(formatFixed(5_000n, 6, 2)).toBe('0.01');
+		expect(formatFixed(-5_000n, 6, 2)).toBe('-0.01');
+		expect(formatFixed(0n, 18, 4)).toBe('0.0000');
+	});
 });
 
 describe('formatUnit', () => {
@@ -88,6 +102,17 @@ describe('formatUnit', () => {
 
 	test('passes non-numeric strings through', () => {
 		expect(formatUnit('n/a', 'usdc')).toBe('n/a');
+	});
+
+	test('dust and huge values', () => {
+		expect(formatUnit(1n, 'rwa')).toBe('<0.0001');
+		expect(formatUnit('4999', 'usdc')).toBe('<0.01');
+		expect(formatUnit(MAX_UINT256, 'rwa')).toBe(
+			'115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457.5840'
+		);
+		expect(formatUnit(MAX_UINT256, 'usdc')).toBe(
+			'115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129.64'
+		);
 	});
 });
 
@@ -107,6 +132,12 @@ describe('formatLiquidity', () => {
 		expect(formatLiquidity(25_000_000_000_000_000n)).toBe('2.50e16');
 		expect(formatLiquidity(0n)).toBe('0');
 		expect(formatLiquidity(999n)).toBe('999');
+	});
+
+	test('a rounded mantissa carries into the exponent', () => {
+		expect(formatLiquidity(9_999_600_000_000_000_000n)).toBe('1.00e19');
+		expect(formatLiquidity(999_500_000_000_000_000n)).toBe('1.00e18');
+		expect(formatLiquidity(1000n)).toBe('1.00e3');
 	});
 });
 

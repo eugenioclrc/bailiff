@@ -57,7 +57,8 @@ describe('reconcileLiquidation', () => {
 			'keeper-usdc',
 			'keeper-rwa',
 			'pm-rwa',
-			'adapter-flat',
+			'adapter-rwa',
+			'adapter-usdc',
 			'residual-direct',
 			'debt',
 			'collateral'
@@ -71,6 +72,25 @@ describe('reconcileLiquidation', () => {
 		const logs = decodeLogs(preFixLiquidationLogs(), logContext);
 		const result = reconcileLiquidation(logs, before, after({ keeperRwa: 1n }), ctx);
 		expect(checkMap(result.checks)['keeper-rwa']).toBe(false);
+	});
+
+	test('adapter RWA and USDC leftovers are checked apart, so opposite signs cannot cancel', () => {
+		const logs = decodeLogs(preFixLiquidationLogs(), logContext);
+		const start = { ...before, adapterUsdc: 5n };
+		const result = reconcileLiquidation(logs, start, after({ adapterRwa: 5n, adapterUsdc: 0n }), ctx);
+		const checks = checkMap(result.checks);
+		expect(checks['adapter-rwa']).toBe(false);
+		expect(checks['adapter-usdc']).toBe(true);
+		expect(checks['adapter-flat']).toBeUndefined();
+	});
+
+	test('a balance the adapter already held is still flagged', () => {
+		const logs = decodeLogs(preFixLiquidationLogs(), logContext);
+		const start = { ...before, adapterUsdc: 7n };
+		const result = reconcileLiquidation(logs, start, after({ adapterUsdc: 7n }), ctx);
+		expect(checkMap(result.checks)['adapter-usdc']).toBe(false);
+		const usdc = result.checks.find((c) => c.id === 'adapter-usdc');
+		expect(usdc).toMatchObject({ unit: 'usdc', expected: '0', actual: '7' });
 	});
 
 	test('a debt drop that does not match the events fails', () => {

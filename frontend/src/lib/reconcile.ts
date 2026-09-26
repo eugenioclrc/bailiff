@@ -293,13 +293,9 @@ export function reconcileLiquidation(
 		),
 		check('keeper-rwa', 'Keeper RWA after', 'rwa', 0n, after.keeperRwa),
 		check('pm-rwa', 'PoolManager raw RWA after', 'rwa', 0n, after.pmRwa),
-		check(
-			'adapter-flat',
-			'Adapter kept no inventory (RWA + USDC change)',
-			'raw',
-			0n,
-			after.adapterRwa - before.adapterRwa + (after.adapterUsdc - before.adapterUsdc)
-		),
+		// Absolute balances, one per token: the adapter must end the transaction holding nothing.
+		check('adapter-rwa', 'Adapter RWA after', 'rwa', 0n, after.adapterRwa),
+		check('adapter-usdc', 'Adapter USDC after', 'usdc', 0n, after.adapterUsdc),
 		...residualPart.checks,
 		check(
 			'debt',
