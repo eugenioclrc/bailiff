@@ -111,7 +111,7 @@
 		overflow: auto;
 		overscroll-behavior: contain;
 		overflow-anchor: none;
-		border-radius: 6px;
+		border-radius: 4px;
 	}
 
 	ol {
@@ -131,7 +131,7 @@
 	.empty {
 		padding: 18px 14px;
 		border: 1px dashed var(--color-rule);
-		border-radius: 6px;
+		border-radius: 4px;
 		color: var(--color-ink-2);
 		background: var(--color-sheet);
 	}

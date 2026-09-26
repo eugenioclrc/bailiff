@@ -46,7 +46,7 @@
 		padding: 9px 12px 10px;
 		background: var(--color-sheet);
 		border: 1px solid var(--color-rule);
-		border-radius: 6px;
+		border-radius: 4px;
 	}
 
 	header {

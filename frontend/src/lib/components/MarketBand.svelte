@@ -133,7 +133,7 @@
 	.band {
 		display: grid;
 		grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
-		border-radius: 6px;
+		border-radius: 4px;
 		overflow: hidden;
 		border: 1px solid var(--color-steel-deep);
 	}
