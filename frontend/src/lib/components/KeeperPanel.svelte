@@ -38,7 +38,7 @@
 	let whyOpen = $state(false);
 
 	/*
-	 * Both handlers read and close the element itself: bind:open only syncs on the toggle event,
+	 * The handlers below read and close the element itself: bind:open only syncs on the toggle event,
 	 * which fires after a fast Enter then Tab, and would otherwise reopen the list.
 	 */
 	function shut(details: HTMLDetailsElement) {
@@ -57,6 +57,20 @@
 	function leaveWhy(event: FocusEvent & { currentTarget: HTMLDetailsElement }) {
 		const next = event.relatedTarget;
 		if (next instanceof Node && !event.currentTarget.contains(next)) shut(event.currentTarget);
+	}
+
+	/**
+	 * A click on anything outside closes it too: a click on plain text moves focus to no element, so
+	 * focusout alone would leave the list over the band figures.
+	 */
+	function closeOnClickAway(details: HTMLDetailsElement) {
+		const onPointerDown = (event: PointerEvent) => {
+			if (!details.open) return;
+			if (event.target instanceof Node && details.contains(event.target)) return;
+			shut(details);
+		};
+		document.addEventListener('pointerdown', onPointerDown);
+		return () => document.removeEventListener('pointerdown', onPointerDown);
 	}
 
 	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
@@ -114,7 +128,13 @@
 		{#if quoteWhy.length}
 			<!-- Delegated: Escape and focus exit bubble up from the summary, the focusable part. -->
 			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<details class="why" bind:open={whyOpen} onkeydown={closeWhy} onfocusout={leaveWhy}>
+			<details
+				class="why"
+				{@attach closeOnClickAway}
+				bind:open={whyOpen}
+				onkeydown={closeWhy}
+				onfocusout={leaveWhy}
+			>
 				<summary>Why the quotes revert</summary>
 				<ul>
 					{#each quoteWhy as why (why.label)}
