@@ -1,0 +1,250 @@
+<script lang="ts">
+	import type { Demo } from '$lib/demo.svelte';
+	import { formatUnit } from '$lib/format';
+	import type { HolderKey } from '$lib/types';
+	import { holderOf, showRead } from '$lib/view';
+
+	let { demo }: { demo: Demo } = $props();
+
+	let s = $derived(demo.state);
+	let nav = $derived(showRead(s?.market.nav, 'wad'));
+	let floor = $derived(s?.navStatus.floor ? formatUnit(s.navStatus.floor, 'wad') : '—');
+	let spot = $derived(s?.pool.spot ? formatUnit(s.pool.spot, 'wad') : '—');
+	let floorPercent = $derived(s ? `${s.navFloorBps / 100}%` : '99%');
+	let floorEnforced = $derived(s?.adapterNavFloorBps.ok === true);
+
+	let floorNote = $derived.by(() => {
+		if (!s) return '';
+		if (!floorEnforced)
+			return 'The deployed adapter does not enforce this floor yet; it sells at any spot.';
+		return s.pool.spotAboveFloor
+			? 'Spot is above the floor, so the adapter may sell.'
+			: 'Spot is at or below the floor: the adapter refuses to sell.';
+	});
+
+	type Stop = { key: HolderKey; name: string; role: string };
+	const PATH: Stop[] = [
+		{ key: 'market', name: 'MiniLend market', role: 'holds the collateral' },
+		{ key: 'adapter', name: 'Liquidation adapter', role: 'transit inside one tx' },
+		{ key: 'pa', name: 'Pool wrapper (PA)', role: 'backs the pool token' }
+	];
+	const OUTSIDE: Stop[] = [
+		{ key: 'keeper', name: 'Keeper', role: 'never takes custody' },
+		{ key: 'poolManager', name: 'PoolManager', role: 'raw RWA, never held' }
+	];
+
+	function rwaOf(key: HolderKey) {
+		return showRead(holderOf(s, key)?.rwa, 'rwa');
+	}
+</script>
+
+<section class="band" aria-label="Prices and RWA custody">
+	<div class="prices">
+		<h2>Prices, USDC per RWA</h2>
+		<dl>
+			<div>
+				<dt>NAV</dt>
+				<dd class={{ num: nav.tone === 'value' }}>{nav.text}</dd>
+			</div>
+			<div>
+				<dt>NAV floor, {floorPercent}</dt>
+				<dd class="num">{floor}</dd>
+			</div>
+			<div>
+				<dt>Pool spot</dt>
+				<dd class="num">{spot}</dd>
+			</div>
+		</dl>
+		<p class="note">{floorNote}</p>
+	</div>
+
+	<div class="custody">
+		<h2>Who holds the RWA</h2>
+		<ol class="path" aria-label="Liquidation path of seized RWA">
+			{#each PATH as stop (stop.key)}
+				{@const shown = rwaOf(stop.key)}
+				<li>
+					<span class="name">{stop.name}</span>
+					<span class={{ amount: true, num: shown.tone === 'value' }}>{shown.text}</span>
+					<span class="role">{stop.role}</span>
+				</li>
+			{/each}
+		</ol>
+		<ul class="outside">
+			{#each OUTSIDE as stop (stop.key)}
+				{@const shown = rwaOf(stop.key)}
+				<li>
+					<span class="name">{stop.name}</span>
+					<span class={{ amount: true, num: shown.tone === 'value' }}>{shown.text}</span>
+					<span class="role">{stop.role}</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
+</section>
+
+<style>
+	.band {
+		display: grid;
+		grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr);
+		border-radius: 6px;
+		overflow: hidden;
+		border: 1px solid var(--color-steel-deep);
+	}
+
+	h2 {
+		font: 400 16px/1 var(--font-display);
+		letter-spacing: 0.02em;
+		padding-top: 2px;
+	}
+
+	.prices {
+		display: grid;
+		gap: 3px;
+		padding: 7px 12px;
+		background: var(--color-sheet);
+	}
+
+	.prices dl {
+		display: grid;
+		grid-template-columns: repeat(3, auto);
+		justify-content: start;
+		column-gap: 22px;
+	}
+
+	.prices dt {
+		color: var(--color-ink-2);
+		font-size: 12px;
+	}
+
+	.prices dd {
+		font-size: 22px;
+		line-height: 1.05;
+	}
+
+	.note {
+		color: var(--color-ink-2);
+		font-size: 12px;
+	}
+
+	.custody {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-rows: auto 1fr;
+		column-gap: 18px;
+		row-gap: 3px;
+		padding: 7px 12px;
+		background: var(--color-steel);
+		color: var(--color-steel-ink);
+	}
+
+	.custody h2 {
+		grid-column: 1 / -1;
+	}
+
+	.path,
+	.outside {
+		display: flex;
+		align-items: stretch;
+	}
+
+	.path li,
+	.outside li {
+		display: grid;
+		align-content: start;
+		gap: 1px;
+		min-width: 0;
+	}
+
+	/* The arrows are the point: seized RWA only ever moves along this path. */
+	.path li + li {
+		margin-left: 34px;
+		position: relative;
+	}
+
+	.path li + li::before {
+		content: '';
+		position: absolute;
+		left: -28px;
+		top: 21px;
+		width: 18px;
+		height: 2px;
+		background: currentColor;
+	}
+
+	.path li + li::after {
+		content: '';
+		position: absolute;
+		left: -13px;
+		top: 17px;
+		border: 5px solid transparent;
+		border-left: 7px solid currentColor;
+	}
+
+	.outside {
+		gap: 16px;
+		padding-left: 16px;
+		border-left: 1px solid color-mix(in srgb, var(--color-steel-ink) 35%, transparent);
+	}
+
+	.name {
+		font-size: 12px;
+		opacity: 0.85;
+	}
+
+	.amount {
+		font-size: 20px;
+		line-height: 1.05;
+	}
+
+	.role {
+		font-size: 11px;
+		opacity: 0.75;
+	}
+
+	@media (max-width: 1100px) {
+		.band {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 640px) {
+		.custody {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.path {
+			flex-direction: column;
+			gap: 6px;
+		}
+
+		/* Vertical path: the connector points down instead of right. */
+		.path li + li {
+			margin-left: 0;
+			padding-left: 22px;
+		}
+
+		.path li + li::before {
+			left: 6px;
+			top: -6px;
+			width: 2px;
+			height: 14px;
+		}
+
+		.path li + li::after {
+			left: 2px;
+			top: 7px;
+			border: 5px solid transparent;
+			border-top: 7px solid currentColor;
+		}
+
+		.outside {
+			padding-left: 0;
+			border-left: 0;
+		}
+
+		.prices dl {
+			column-gap: 14px;
+		}
+	}
+</style>

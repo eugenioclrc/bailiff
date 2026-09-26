@@ -2,12 +2,22 @@ import { ACTIONS, type ActionName } from './types';
 
 export const ACTION_LABELS: Record<ActionName, string> = {
 	crash: 'Cut NAV to 85',
-	horizon: 'Direct liquidation (simulated)',
+	horizon: 'Simulate direct liquidation',
 	liquidateFull: 'Liquidate full position',
 	withdraw95: 'Withdraw 95% of liquidity',
 	liquidateChunk: 'Liquidate 10,000 USDC',
 	revoke: 'Revoke adapter wrapper',
 	reset: 'Reset to healthy snapshot'
+};
+
+export const ACTION_PENDING: Record<ActionName, string> = {
+	crash: 'Sending NAV update…',
+	horizon: 'Simulating…',
+	liquidateFull: 'Quoting and sending…',
+	withdraw95: 'Withdrawing…',
+	liquidateChunk: 'Quoting and sending…',
+	revoke: 'Revoking…',
+	reset: 'Resetting…'
 };
 
 const ACTION_SET: ReadonlySet<string> = new Set(ACTIONS);
