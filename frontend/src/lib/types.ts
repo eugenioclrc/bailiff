@@ -133,8 +133,7 @@ export type ActionResponse = {
 };
 
 export type ReadValue<T = string> =
-	| { ok: true; value: T }
-	| { ok: false; reason: 'not-implemented' | 'reverted'; message: string };
+	{ ok: true; value: T } | { ok: false; reason: 'not-implemented' | 'reverted'; message: string };
 
 export type HolderKey =
 	| 'issuer'
@@ -159,8 +158,7 @@ export type Holder = {
 };
 
 export type Quote = { repayAssets: string } & (
-	| { ok: true; bounty: string }
-	| { ok: false; error: { name: string; message: string } }
+	{ ok: true; bounty: string } | { ok: false; error: { name: string; message: string } }
 );
 
 export type ChainState = {
@@ -174,6 +172,8 @@ export type ChainState = {
 	block: { number: string; timestamp: string };
 	addresses: Record<string, string>;
 	poolId: string;
+	/** PA sorts before USDC, so the RWA side of a Swap is amount0. */
+	rwaIsCurrency0: boolean;
 	navFloorBps: number;
 	market: {
 		nav: ReadValue;
@@ -191,6 +191,8 @@ export type ChainState = {
 		liquidationBlocked: ReadValue<boolean>;
 	};
 	navStatus: { fresh: boolean | null; ageSeconds: string | null; floor: string | null };
+	/** LiquidationAdapter.NAV_FLOOR_BPS(): "not implemented" while the deployed adapter has no NAV floor. */
+	adapterNavFloorBps: ReadValue<number>;
 	pool: {
 		sqrtPriceX96: ReadValue;
 		tick: ReadValue<number>;

@@ -34,7 +34,13 @@ const MARKET_GETTERS = [
 	'totalBadDebt',
 	'totalResidualClaims'
 ] as const;
-const BORROWER_GETTERS = ['positions', 'healthFactor', 'badDebtOf', 'claimableResidual', 'liquidationBlocked'] as const;
+const BORROWER_GETTERS = [
+	'positions',
+	'healthFactor',
+	'badDebtOf',
+	'claimableResidual',
+	'liquidationBlocked'
+] as const;
 
 function stateCalls(ctx: DemoContext): ReadCall[] {
 	const m = ctx.manifest;
@@ -46,10 +52,34 @@ function stateCalls(ctx: DemoContext): ReadCall[] {
 		args
 	});
 	const holderCalls = HOLDERS.flatMap(({ key }) => [
-		{ key: `rwa.balance.${key}`, address: m.rwa, abi: rwaAbi as Abi, functionName: 'balanceOf', args: [m[key]] },
-		{ key: `usdc.balance.${key}`, address: m.usdc, abi: usdcAbi as Abi, functionName: 'balanceOf', args: [m[key]] },
-		{ key: `rwa.flags.${key}`, address: m.rwa, abi: rwaAbi as Abi, functionName: 'flags', args: [m[key]] },
-		{ key: `rwa.frozen.${key}`, address: m.rwa, abi: rwaAbi as Abi, functionName: 'frozen', args: [m[key]] }
+		{
+			key: `rwa.balance.${key}`,
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m[key]]
+		},
+		{
+			key: `usdc.balance.${key}`,
+			address: m.usdc,
+			abi: usdcAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m[key]]
+		},
+		{
+			key: `rwa.flags.${key}`,
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'flags',
+			args: [m[key]]
+		},
+		{
+			key: `rwa.frozen.${key}`,
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'frozen',
+			args: [m[key]]
+		}
 	]);
 	const pa = (key: string, fn: string, args?: readonly unknown[]): ReadCall => ({
 		key,
@@ -67,15 +97,34 @@ function stateCalls(ctx: DemoContext): ReadCall[] {
 		pa('pa.adapterWrapper', 'allowedWrappers', [m.adapter]),
 		pa('pa.deskWrapper', 'allowedWrappers', [m.desk]),
 		pa('pa.hookAllowed', 'allowedHooks', [m.hook]),
-		{ key: 'pool.slot0', address: m.stateView, abi: stateViewAbi as Abi, functionName: 'getSlot0', args: [m.poolId] },
-		{ key: 'pool.liquidity', address: m.stateView, abi: stateViewAbi as Abi, functionName: 'getLiquidity', args: [m.poolId] }
+		{
+			key: 'adapter.NAV_FLOOR_BPS',
+			address: m.adapter,
+			abi: adapterAbi as Abi,
+			functionName: 'NAV_FLOOR_BPS'
+		},
+		{
+			key: 'pool.slot0',
+			address: m.stateView,
+			abi: stateViewAbi as Abi,
+			functionName: 'getSlot0',
+			args: [m.poolId]
+		},
+		{
+			key: 'pool.liquidity',
+			address: m.stateView,
+			abi: stateViewAbi as Abi,
+			functionName: 'getLiquidity',
+			args: [m.poolId]
+		}
 	];
 }
 
 function toRead<T>(result: ReadResult | undefined, map: (value: unknown) => T): ReadValue<T> {
 	if (!result) return { ok: false, reason: 'reverted', message: 'not read' };
 	if (result.ok) return { ok: true, value: map(result.value) };
-	if (result.notImplemented) return { ok: false, reason: 'not-implemented', message: 'not implemented yet' };
+	if (result.notImplemented)
+		return { ok: false, reason: 'not-implemented', message: 'not implemented yet' };
 	return { ok: false, reason: 'reverted', message: result.revert.message };
 }
 
@@ -88,13 +137,25 @@ const valueOf = (r: ReadResult | undefined): unknown => (r?.ok ? r.value : undef
 /** Keeper quote on the pending block, so a stale NAV shows up exactly as the next send would see it. */
 async function quote(ctx: DemoContext, repayAssets: bigint): Promise<Quote> {
 	const m = ctx.manifest;
-	const data = encodeFunctionData({ abi: adapterAbi, functionName: 'liquidate', args: [m.borrower, repayAssets, 0n] });
+	const data = encodeFunctionData({
+		abi: adapterAbi,
+		functionName: 'liquidate',
+		args: [m.borrower, repayAssets, 0n]
+	});
 	const outcome = await simulate(ctx, m.keeper, m.adapter, data, 'pending');
 	const repay = repayAssets.toString();
 	if (!outcome.ok) {
-		return { repayAssets: repay, ok: false, error: { name: outcome.revert.name, message: outcome.revert.message } };
+		return {
+			repayAssets: repay,
+			ok: false,
+			error: { name: outcome.revert.name, message: outcome.revert.message }
+		};
 	}
-	const bounty = decodeFunctionResult({ abi: adapterAbi, functionName: 'liquidate', data: outcome.data });
+	const bounty = decodeFunctionResult({
+		abi: adapterAbi,
+		functionName: 'liquidate',
+		data: outcome.data
+	});
 	return { repayAssets: repay, ok: true, bounty: bounty.toString() };
 }
 
@@ -116,11 +177,18 @@ function navStatus(
 	};
 }
 
-function poolState(ctx: DemoContext, r: Record<string, ReadResult>, floor: string | null): ChainState['pool'] {
+function poolState(
+	ctx: DemoContext,
+	r: Record<string, ReadResult>,
+	floor: string | null
+): ChainState['pool'] {
 	const slot0 = r['pool.slot0'];
-	const sqrtPrice = valueOf(slot0) ? ((valueOf(slot0) as readonly unknown[])[0] as bigint) : undefined;
+	const sqrtPrice = valueOf(slot0)
+		? ((valueOf(slot0) as readonly unknown[])[0] as bigint)
+		: undefined;
 	const liquidity = valueOf(r['pool.liquidity']) as bigint | undefined;
-	const spot = sqrtPrice === undefined ? null : spotPriceWad(sqrtPrice, ctx.manifest.rwaIsCurrency0);
+	const spot =
+		sqrtPrice === undefined ? null : spotPriceWad(sqrtPrice, ctx.manifest.rwaIsCurrency0);
 	const reserves =
 		sqrtPrice === undefined || liquidity === undefined
 			? null
@@ -137,8 +205,12 @@ function poolState(ctx: DemoContext, r: Record<string, ReadResult>, floor: strin
 	};
 }
 
-function liquidationGate(status: ChainState['navStatus'], maxStaleness: unknown): ChainState['liquidation'] {
-	if (status.fresh === null) return { enabled: false, reason: 'NAV could not be read, so liquidation is disabled.' };
+function liquidationGate(
+	status: ChainState['navStatus'],
+	maxStaleness: unknown
+): ChainState['liquidation'] {
+	if (status.fresh === null)
+		return { enabled: false, reason: 'NAV could not be read, so liquidation is disabled.' };
 	if (status.fresh) return { enabled: true, reason: null };
 	const age = formatDuration(BigInt(status.ageSeconds ?? '0'));
 	const limit = typeof maxStaleness === 'bigint' ? formatDuration(maxStaleness) : 'the limit';
@@ -168,7 +240,23 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 		flags: toRead(r[`rwa.flags.${key}`], num),
 		frozen: toRead(r[`rwa.frozen.${key}`], bool)
 	}));
-	const addressFields = ['market', 'adapter', 'desk', 'rwa', 'usdc', 'pa', 'hook', 'poolManager', 'stateView', 'factory', 'issuer', 'mm', 'keeper', 'borrower', 'lender'] as const;
+	const addressFields = [
+		'market',
+		'adapter',
+		'desk',
+		'rwa',
+		'usdc',
+		'pa',
+		'hook',
+		'poolManager',
+		'stateView',
+		'factory',
+		'issuer',
+		'mm',
+		'keeper',
+		'borrower',
+		'lender'
+	] as const;
 
 	return {
 		env: {
@@ -181,6 +269,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 		block: { number: block.number.toString(), timestamp: block.timestamp.toString() },
 		addresses: Object.fromEntries(addressFields.map((f) => [f, m[f] as Address])),
 		poolId: m.poolId,
+		rwaIsCurrency0: m.rwaIsCurrency0,
 		navFloorBps: m.navFloorBps,
 		market: {
 			nav: toRead(r['market.nav'], big),
@@ -198,6 +287,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 			liquidationBlocked: toRead(r['market.liquidationBlocked'], bool)
 		},
 		navStatus: status,
+		adapterNavFloorBps: toRead(r['adapter.NAV_FLOOR_BPS'], num),
 		pool: poolState(ctx, r, status.floor),
 		holders,
 		rwaPaused: toRead(r['rwa.paused'], bool),
@@ -213,17 +303,68 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 }
 
 /** Balances needed to reconcile one liquidation, at a given block. */
-export async function readBalanceSnapshot(ctx: DemoContext, blockNumber: bigint): Promise<BalanceSnapshot> {
+export async function readBalanceSnapshot(
+	ctx: DemoContext,
+	blockNumber: bigint
+): Promise<BalanceSnapshot> {
 	const m = ctx.manifest;
 	const calls: ReadCall[] = [
-		{ key: 'pos', address: m.market, abi: miniLendAbi as Abi, functionName: 'positions', args: [m.borrower] },
-		{ key: 'claim', address: m.market, abi: miniLendAbi as Abi, functionName: 'claimableResidual', args: [m.borrower] },
-		{ key: 'keeperUsdc', address: m.usdc, abi: usdcAbi as Abi, functionName: 'balanceOf', args: [m.keeper] },
-		{ key: 'keeperRwa', address: m.rwa, abi: rwaAbi as Abi, functionName: 'balanceOf', args: [m.keeper] },
-		{ key: 'borrowerUsdc', address: m.usdc, abi: usdcAbi as Abi, functionName: 'balanceOf', args: [m.borrower] },
-		{ key: 'adapterRwa', address: m.rwa, abi: rwaAbi as Abi, functionName: 'balanceOf', args: [m.adapter] },
-		{ key: 'adapterUsdc', address: m.usdc, abi: usdcAbi as Abi, functionName: 'balanceOf', args: [m.adapter] },
-		{ key: 'pmRwa', address: m.rwa, abi: rwaAbi as Abi, functionName: 'balanceOf', args: [m.poolManager] }
+		{
+			key: 'pos',
+			address: m.market,
+			abi: miniLendAbi as Abi,
+			functionName: 'positions',
+			args: [m.borrower]
+		},
+		{
+			key: 'claim',
+			address: m.market,
+			abi: miniLendAbi as Abi,
+			functionName: 'claimableResidual',
+			args: [m.borrower]
+		},
+		{
+			key: 'keeperUsdc',
+			address: m.usdc,
+			abi: usdcAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.keeper]
+		},
+		{
+			key: 'keeperRwa',
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.keeper]
+		},
+		{
+			key: 'borrowerUsdc',
+			address: m.usdc,
+			abi: usdcAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.borrower]
+		},
+		{
+			key: 'adapterRwa',
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.adapter]
+		},
+		{
+			key: 'adapterUsdc',
+			address: m.usdc,
+			abi: usdcAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.adapter]
+		},
+		{
+			key: 'pmRwa',
+			address: m.rwa,
+			abi: rwaAbi as Abi,
+			functionName: 'balanceOf',
+			args: [m.poolManager]
+		}
 	];
 	const r = await readMany(ctx, calls, blockNumber);
 	const need = (key: string): bigint => {
