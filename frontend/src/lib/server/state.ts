@@ -150,15 +150,24 @@ async function quote(ctx: DemoContext, repayAssets: bigint): Promise<Quote> {
 		return {
 			repayAssets: repay,
 			ok: false,
-			error: { name: outcome.revert.name, message: outcome.revert.message }
+			error: { name: outcome.revert.name, message: outcome.revert.message },
+			revert: outcome.revert
 		};
 	}
-	const bounty = decodeFunctionResult({
-		abi: adapterAbi,
-		functionName: 'liquidate',
-		data: outcome.data
-	});
-	return { repayAssets: repay, ok: true, bounty: bounty.toString() };
+	try {
+		const bounty = decodeFunctionResult({
+			abi: adapterAbi,
+			functionName: 'liquidate',
+			data: outcome.data
+		});
+		return { repayAssets: repay, ok: true, bounty: bounty.toString() };
+	} catch {
+		return {
+			repayAssets: repay,
+			ok: false,
+			error: { name: 'NoReturnData', message: 'adapter.liquidate returned no bounty data' }
+		};
+	}
 }
 
 function poolState(
@@ -239,7 +248,7 @@ export async function readState(ctx: DemoContext): Promise<ChainState> {
 
 	return {
 		env: {
-			label: m.forkBlock ? `Anvil fork · block ${m.forkBlock}` : 'Anvil',
+			label: `Anvil fork · block ${m.forkBlock}`,
 			network: m.network,
 			chainId: m.chainId,
 			forkBlock: m.forkBlock,

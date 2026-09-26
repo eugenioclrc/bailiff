@@ -25,7 +25,7 @@ import type {
 } from '../types';
 import { revertOf, sendAndWait, simulate, traceRevert, type SimOutcome } from './chain';
 import type { DemoContext, Role } from './context';
-import { HttpFailure } from './guards';
+import { HttpFailure, describeForLog } from './guards';
 import { resetToBaseline } from './reset';
 import { CHUNK_REPAY, readBalanceSnapshot } from './state';
 
@@ -102,7 +102,16 @@ async function mine(
 			detail: { ...detail, receipt: receiptDetail, ...(traced ? { revert: traced } : {}) }
 		};
 	}
-	const more = extra ? await extra(receipt, logs) : {};
+	// The transaction is mined: a failed read afterwards must not hide its hash behind an HTTP 500.
+	let more: Partial<ActionDetail> = {};
+	try {
+		if (extra) more = await extra(receipt, logs);
+	} catch (err) {
+		console.error(`[bailiff] reconciliation after ${hash}: ${describeForLog(err)}`);
+		more = {
+			reconciliationError: `Balances could not be read around block ${receipt.blockNumber}; reconciliation skipped. The transaction itself mined.`
+		};
+	}
 	return { status: 'mined', txHash: hash, detail: { ...detail, receipt: receiptDetail, ...more } };
 }
 
@@ -143,6 +152,18 @@ async function simulateDirectRoute(ctx: DemoContext): Promise<ActionResponse> {
 	return simulationReverted(detail, outcome.revert);
 }
 
+/** The quoted bounty. A successful call without return data means the adapter is not deployed here. */
+function decodeBounty(data: Hex): bigint {
+	try {
+		return decodeFunctionResult({ abi: adapterAbi, functionName: 'liquidate', data });
+	} catch {
+		throw new HttpFailure(
+			502,
+			'adapter.liquidate returned no bounty data; the manifest contracts may be missing. Rerun the local deploy and seed (O4).'
+		);
+	}
+}
+
 /** O5 liquidateFull / liquidateChunk: quote, set minBounty to 97%, re-simulate, send, reconcile. */
 async function liquidateViaAdapter(
 	ctx: DemoContext,
@@ -160,7 +181,7 @@ async function liquidateViaAdapter(
 			args: [borrower, repayAssets, minBounty]
 		});
 	const callText = (minBounty: bigint) =>
-		`adapter.liquidate(borrower, ${repayText}, minBounty ${minBounty})`;
+		`adapter.liquidate(borrower, ${repayText}, minBounty ${formatUnit(minBounty, 'usdc')} USDC)`;
 
 	const quoted = await simulate(ctx, keeper, adapter, encode(0n));
 	const signer = { role: 'keeper' as const, address: keeper };
@@ -172,18 +193,14 @@ async function liquidateViaAdapter(
 		);
 	}
 
-	const bounty = decodeFunctionResult({
-		abi: adapterAbi,
-		functionName: 'liquidate',
-		data: quoted.data
-	});
+	const bounty = decodeBounty(quoted.data);
 	const minBounty = (bounty * MIN_BOUNTY_PERCENT) / 100n;
 	const quoteRecord = record(
 		'Quote (minBounty 0)',
 		keeper,
 		callText(0n),
 		quoted,
-		`bounty ${bounty}`
+		`bounty ${formatUnit(bounty, 'usdc')} USDC`
 	);
 	const data = encode(minBounty);
 	const checked = await simulate(ctx, keeper, adapter, data);
