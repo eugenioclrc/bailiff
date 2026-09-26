@@ -175,8 +175,9 @@
 		background: var(--color-sheet);
 	}
 
+	/* 5px on the sides and below fits the summary's focus ring (3px plus a 2px offset) in the scroller. */
 	.archive {
-		margin-top: 10px;
+		margin: 10px 5px 5px;
 	}
 
 	.archive > summary {
@@ -213,9 +214,11 @@
 	 * At the demo resolution the scroller cuts entries mid-line; the fade says the text goes on.
 	 * The bottom pad keeps the last line clear of the fade once scrolled to the end, and the fade
 	 * drops while the region has keyboard focus, since the mask would also hide its outline.
-	 * No minimum height at this size: the scroller gives up room so the page itself never scrolls.
+	 * No minimum height from 1260px, where the header is one line: the scroller gives up room so the
+	 * page never scrolls. Narrower, the header wraps and would leave it a few px, so the 120px
+	 * minimum stays and the page scrolls instead of hiding the receipts under the fade.
 	 */
-	@media (min-width: 1101px) {
+	@media (min-width: 1260px) {
 		.scroll {
 			min-height: 0;
 			padding-bottom: 24px;
