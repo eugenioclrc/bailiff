@@ -128,8 +128,10 @@
 </article>
 
 <style>
+	/* One explicit shrinkable column: a wide receipt table scrolls inside, never widens the entry. */
 	.entry {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 5px;
 		padding: 8px 10px 8px 12px;
 		background: var(--color-sheet);
@@ -223,5 +225,12 @@
 		font-size: 12px;
 		font-weight: 600;
 		color: var(--color-steel);
+	}
+
+	/* A 44px tap target on touch and narrow screens; the 1280x720 recording keeps its density. */
+	@media (max-width: 1100px), (pointer: coarse) {
+		summary {
+			padding-block: 14px;
+		}
 	}
 </style>

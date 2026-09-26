@@ -163,6 +163,12 @@
 	}
 
 	/* Below the demo resolution the page scrolls anyway: the list opens in flow and covers nothing. */
+	@media (max-width: 1100px), (pointer: coarse) {
+		.why summary {
+			padding-block: 14px;
+		}
+	}
+
 	@media (max-width: 1100px) {
 		.why ul {
 			position: static;

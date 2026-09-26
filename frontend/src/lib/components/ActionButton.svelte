@@ -109,4 +109,11 @@
 		line-height: 1.3;
 		color: var(--color-alert);
 	}
+
+	/* A 44px tap target on touch and narrow screens; the 1280x720 recording keeps its density. */
+	@media (max-width: 1100px), (pointer: coarse) {
+		.action {
+			min-height: 44px;
+		}
+	}
 </style>

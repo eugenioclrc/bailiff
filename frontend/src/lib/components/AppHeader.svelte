@@ -123,4 +123,10 @@
 		opacity: 0.45;
 		cursor: not-allowed;
 	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		.refresh {
+			min-height: 44px;
+		}
+	}
 </style>

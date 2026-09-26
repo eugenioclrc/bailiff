@@ -116,6 +116,7 @@
 
 	ol {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 8px;
 	}
 
@@ -148,6 +149,7 @@
 
 	.branch {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 6px;
 		margin-top: 8px;
 		padding-left: 10px;
@@ -166,5 +168,11 @@
 		background: var(--color-reset);
 		color: var(--color-steel-ink);
 		font-weight: 600;
+	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		.archive > summary {
+			padding-block: 14px;
+		}
 	}
 </style>

@@ -131,7 +131,7 @@
 
 	.checks {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
 		gap: 1px 16px;
 		padding: 4px 0 2px;
 		font-size: 11.5px;
@@ -156,5 +156,11 @@
 	.na,
 	.why {
 		color: var(--color-ink-2);
+	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		summary {
+			padding-block: 14px;
+		}
 	}
 </style>
