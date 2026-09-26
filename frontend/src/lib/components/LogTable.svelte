@@ -6,9 +6,16 @@
 	type Props = { logs: DecodedLog[]; rwaIsCurrency0: boolean };
 	let { logs, rwaIsCurrency0 }: Props = $props();
 
-	/** The canonical hook Swap is the evidence row: its emitter, pool id and sender are shown in full. */
+	/** Full values without a mouse: the title tooltips below only help pointer users. */
+	let showFull = $state(false);
+
+	/** The canonical hook Swap is the evidence row: its emitter, pool id and sender are always full. */
+	function isFull(log: DecodedLog): boolean {
+		return showFull || log.swap?.canonical === true;
+	}
+
 	function argText(log: DecodedLog, arg: DecodedArg): string {
-		const full = log.swap?.canonical === true;
+		const full = isFull(log);
 		if (arg.type === 'address') {
 			if (full) return arg.label ? `${arg.label} ${arg.value}` : arg.value;
 			return arg.label ?? shortAddress(arg.value);
@@ -37,6 +44,12 @@
 	}
 </script>
 
+<button
+	type="button"
+	class="values-toggle"
+	aria-pressed={showFull}
+	onclick={() => (showFull = !showFull)}>Show full values</button
+>
 <div class="wrap">
 	<table>
 		<thead>
@@ -54,7 +67,7 @@
 					<td>
 						{emitterName(log.emitter)}
 						<code class="addr" title={log.address}
-							>{log.swap?.canonical ? log.address : shortAddress(log.address)}</code
+							>{isFull(log) ? log.address : shortAddress(log.address)}</code
 						>
 					</td>
 					<td>
@@ -69,8 +82,7 @@
 									class={[
 										'num',
 										{
-											code:
-												log.swap?.canonical && (arg.type === 'address' || arg.type === 'bytes32')
+											code: isFull(log) && (arg.type === 'address' || arg.type === 'bytes32')
 										}
 									]}>{argText(log, arg)}</span
 								></span
@@ -84,6 +96,29 @@
 </div>
 
 <style>
+	.values-toggle {
+		margin: 4px 0 2px;
+		padding: 2px 8px;
+		border: 1px solid var(--color-rule);
+		border-radius: 4px;
+		background: var(--color-sheet);
+		color: var(--color-ink);
+		font: 600 12px/1.2 var(--font-body);
+		cursor: pointer;
+	}
+
+	.values-toggle[aria-pressed='true'] {
+		border-color: var(--color-ink);
+		background: var(--color-ink);
+		color: var(--color-sheet);
+	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		.values-toggle {
+			min-height: 44px;
+		}
+	}
+
 	/* Wide receipts scroll inside the entry instead of widening the page on small screens. */
 	.wrap {
 		overflow-x: auto;

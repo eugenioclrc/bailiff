@@ -21,7 +21,11 @@
 	<header>
 		<h2 id="{uid}-title">{title}</h2>
 		{#if address}
-			<span class="addr code" title={address}>{shortAddress(address)}</span>
+			<!-- A disclosure, not a tooltip: the full address opens with keyboard and touch too. -->
+			<details class="addr">
+				<summary class="code">{shortAddress(address)}</summary>
+				<code>{address}</code>
+			</details>
 		{/if}
 	</header>
 	<p class="blurb">{blurb}</p>
@@ -51,9 +55,10 @@
 
 	header {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 8px;
+		gap: 0 8px;
 	}
 
 	h2 {
@@ -63,8 +68,26 @@
 	}
 
 	.addr {
+		min-width: 0;
+		margin-left: auto;
 		color: var(--color-ink-2);
 		font-size: 11px;
+		text-align: right;
+	}
+
+	.addr summary {
+		cursor: pointer;
+	}
+
+	.addr code {
+		display: block;
+		color: var(--color-ink);
+	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		.addr summary {
+			padding-block: 15px;
+		}
 	}
 
 	.blurb {
