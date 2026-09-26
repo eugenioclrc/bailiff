@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { dismissable } from '$lib/dismiss';
 	import { shortAddress } from '$lib/format';
 
 	type Props = {
@@ -22,7 +23,7 @@
 		<h2 id="{uid}-title">{title}</h2>
 		{#if address}
 			<!-- A disclosure, not a tooltip: the full address opens with keyboard and touch too. -->
-			<details class="addr">
+			<details class="addr" {@attach dismissable}>
 				<summary class="code">{shortAddress(address)}</summary>
 				<code>{address}</code>
 			</details>
@@ -53,12 +54,14 @@
 		border-radius: 4px;
 	}
 
+	/* The row gap keeps a wrapped address toggle's focus ring off the title above it. */
 	header {
+		position: relative;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 0 8px;
+		gap: 6px 8px;
 	}
 
 	h2 {
@@ -84,6 +87,25 @@
 		display: block;
 		margin-top: 6px;
 		color: var(--color-ink);
+	}
+
+	/*
+	 * At the demo resolution the full address opens over the blurb instead of pushing the role row
+	 * and the rail down 23px; it closes on Escape, on Tab out and on a click elsewhere.
+	 */
+	@media (min-width: 1101px) {
+		.addr code {
+			position: absolute;
+			z-index: 5;
+			top: calc(100% + 6px);
+			right: 0;
+			left: 0;
+			margin-top: 0;
+			padding: 2px 4px;
+			background: var(--color-sheet);
+			border: 1px solid var(--color-steel);
+			border-radius: 4px;
+		}
 	}
 
 	@media (max-width: 1100px), (pointer: coarse) {

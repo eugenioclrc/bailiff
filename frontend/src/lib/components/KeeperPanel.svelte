@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Demo } from '$lib/demo.svelte';
+	import { dismissable } from '$lib/dismiss';
 	import { formatUnit } from '$lib/format';
 	import type { Quote } from '$lib/types';
 	import { holderOf, showFlags, showRead, type Shown } from '$lib/view';
@@ -34,44 +35,6 @@
 			!q.ok && q.error.name !== 'Healthy' ? [{ label, message: q.error.message }] : []
 		);
 	});
-
-	let whyOpen = $state(false);
-
-	/*
-	 * The handlers below read and close the element itself: bind:open only syncs on the toggle event,
-	 * which fires after a fast Enter then Tab, and would otherwise reopen the list.
-	 */
-	function shut(details: HTMLDetailsElement) {
-		details.open = false;
-		whyOpen = false;
-	}
-
-	/** Escape anywhere in the disclosure closes it, so the overlay never outlives the reader's focus. */
-	function closeWhy(event: KeyboardEvent & { currentTarget: HTMLDetailsElement }) {
-		if (event.key !== 'Escape' || !event.currentTarget.open) return;
-		event.preventDefault();
-		shut(event.currentTarget);
-	}
-
-	/** Tabbing out of the disclosure closes it, so the overlay never hides what gets focus next. */
-	function leaveWhy(event: FocusEvent & { currentTarget: HTMLDetailsElement }) {
-		const next = event.relatedTarget;
-		if (next instanceof Node && !event.currentTarget.contains(next)) shut(event.currentTarget);
-	}
-
-	/**
-	 * A click on anything outside closes it too: a click on plain text moves focus to no element, so
-	 * focusout alone would leave the list over the band figures.
-	 */
-	function closeOnClickAway(details: HTMLDetailsElement) {
-		const onPointerDown = (event: PointerEvent) => {
-			if (!details.open) return;
-			if (event.target instanceof Node && details.contains(event.target)) return;
-			shut(details);
-		};
-		document.addEventListener('pointerdown', onPointerDown);
-		return () => document.removeEventListener('pointerdown', onPointerDown);
-	}
 
 	/** A healthy position is expected to refuse liquidation; anything else is worth a red flag. */
 	function quoteState(quote: Quote | undefined): 'good' | 'plain' | 'bad' {
@@ -115,6 +78,21 @@
 		{#if blockedReason}
 			<p class="blocked" id="{uid}-blocked">{blockedReason}</p>
 		{/if}
+		<!--
+			Above the buttons: the actions sit at the panel's foot, so this line takes free space above
+			them and the buttons never move when it appears. Its list opens upward over the quote rows
+			it explains, never over a keeper control.
+		-->
+		{#if quoteWhy.length}
+			<details class="why" {@attach dismissable}>
+				<summary>Why the quotes revert</summary>
+				<ul>
+					{#each quoteWhy as why (why.label)}
+						<li><strong>{why.label}:</strong> {why.message}</li>
+					{/each}
+				</ul>
+			</details>
+		{/if}
 		<!-- Both are eth_calls from the keeper and never send; the probe records the adapter route for O7. -->
 		<div class="pair">
 			<ActionButton {demo} action="horizon" tone="quiet" {blockedBy} />
@@ -124,25 +102,6 @@
 			<ActionButton {demo} action="liquidateFull" {blockedBy} />
 			<ActionButton {demo} action="liquidateChunk" {blockedBy} />
 		</div>
-		<!-- After the buttons, so the open list can never sit on top of a keeper control. -->
-		{#if quoteWhy.length}
-			<!-- Delegated: Escape and focus exit bubble up from the summary, the focusable part. -->
-			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-			<details
-				class="why"
-				{@attach closeOnClickAway}
-				bind:open={whyOpen}
-				onkeydown={closeWhy}
-				onfocusout={leaveWhy}
-			>
-				<summary>Why the quotes revert</summary>
-				<ul>
-					{#each quoteWhy as why (why.label)}
-						<li><strong>{why.label}:</strong> {why.message}</li>
-					{/each}
-				</ul>
-			</details>
-		{/if}
 	{/snippet}
 </Panel>
 
@@ -155,10 +114,11 @@
 		gap: 6px;
 	}
 
+	/* Muted red, like a revert: a stale NAV blocks liquidation outright. */
 	.blocked {
 		font-size: 12px;
 		line-height: 1.3;
-		color: var(--color-caution);
+		color: var(--color-alert);
 	}
 
 	/* An overlay, so opening it never changes the row height at 1280x720. */
@@ -174,23 +134,27 @@
 		color: var(--color-alert);
 	}
 
+	/*
+	 * Upward, capped to the height of the keeper's figure rows, so it never reaches the title and
+	 * address toggle above them; a longer list scrolls inside. A border, not a shadow: the rail's
+	 * active node is the only raised element on the page.
+	 */
 	.why ul {
 		position: absolute;
 		z-index: 10;
-		top: calc(100% + 4px);
+		bottom: calc(100% + 4px);
 		left: 0;
 		right: 0;
 		display: grid;
 		gap: 2px;
-		max-height: 180px;
+		max-height: 124px;
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding: 8px 10px;
+		padding: 6px 10px;
 		overflow-wrap: anywhere;
 		background: var(--color-sheet);
 		border: 1px solid var(--color-alert);
 		border-radius: 4px;
-		box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
 	}
 
 	/* Below the demo resolution the page scrolls anyway: the list opens in flow and covers nothing. */
@@ -205,7 +169,6 @@
 			position: static;
 			max-height: none;
 			margin-top: 4px;
-			box-shadow: none;
 		}
 	}
 </style>
