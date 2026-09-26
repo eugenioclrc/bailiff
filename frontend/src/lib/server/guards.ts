@@ -9,14 +9,16 @@ export class HttpFailure extends Error {
 	override name = 'HttpFailure';
 	constructor(
 		readonly status: number,
-		message: string
+		message: string,
+		/** Extra JSON fields for the error body, e.g. `{ chainReset: true }`. Never secrets. */
+		readonly extra: Readonly<Record<string, string | number | boolean>> = {}
 	) {
 		super(message);
 	}
 }
 
 const LOOPBACK_CLIENTS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
-const MAX_BODY_BYTES = 256;
+export const MAX_BODY_BYTES = 256;
 
 export function isLoopbackClient(address: string): boolean {
 	return LOOPBACK_CLIENTS.has(address);
@@ -46,13 +48,53 @@ export function assertSameOrigin(originHeader: string | null, serverOrigin: stri
 	}
 }
 
-export function assertJsonBody(contentType: string | null, body: string): unknown {
+/** GET: a browser sends Origin on cross-origin fetches; a foreign one is refused. None is fine (curl, same-origin GET). */
+export function assertNotCrossOrigin(originHeader: string | null, serverOrigin: string): void {
+	if (originHeader && originHeader !== serverOrigin) {
+		throw new HttpFailure(403, 'Cross-origin requests are refused.');
+	}
+}
+
+const tooLarge = () => new HttpFailure(413, 'Request body is too large.');
+
+/**
+ * Reads at most MAX_BODY_BYTES of the body. A declared Content-Length over the cap is refused
+ * before reading; a stream that grows past it is cancelled, so a large body is never buffered.
+ */
+export async function readCappedBody(request: Request): Promise<string> {
+	const declared = Number(request.headers.get('content-length'));
+	if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw tooLarge();
+	if (!request.body) return '';
+	const reader = request.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		total += value.byteLength;
+		if (total > MAX_BODY_BYTES) {
+			await reader.cancel();
+			throw tooLarge();
+		}
+		chunks.push(value);
+	}
+	const bytes = new Uint8Array(total);
+	chunks.reduce((offset, chunk) => {
+		bytes.set(chunk, offset);
+		return offset + chunk.byteLength;
+	}, 0);
+	return new TextDecoder().decode(bytes);
+}
+
+export function assertJsonContentType(contentType: string | null): void {
 	if (!contentType || contentType.split(';')[0].trim().toLowerCase() !== 'application/json') {
 		throw new HttpFailure(415, 'Content-Type must be application/json.');
 	}
-	if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) {
-		throw new HttpFailure(413, 'Request body is too large.');
-	}
+}
+
+export function assertJsonBody(contentType: string | null, body: string): unknown {
+	assertJsonContentType(contentType);
+	if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) throw tooLarge();
 	try {
 		return JSON.parse(body);
 	} catch {

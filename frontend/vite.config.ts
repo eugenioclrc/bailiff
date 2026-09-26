@@ -3,7 +3,12 @@ import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+// O5: loopback only. Vite's default CORS would reflect any localhost origin onto the API.
+const LOOPBACK = { host: '127.0.0.1', strictPort: true, cors: false } as const;
+
 export default defineConfig({
+	server: { ...LOOPBACK, port: 5173 },
+	preview: { ...LOOPBACK, port: 4173 },
 	plugins: [
 		tailwindcss(),
 		sveltekit({

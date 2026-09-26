@@ -3,11 +3,14 @@ import { HttpRequestError, TimeoutError } from 'viem';
 import { ConfigError } from './config';
 import {
 	HttpFailure,
+	MAX_BODY_BYTES,
 	assertJsonBody,
 	assertLoopbackClient,
 	assertLoopbackHost,
+	assertNotCrossOrigin,
 	assertSameOrigin,
 	isLoopbackClient,
+	readCappedBody,
 	toHttpFailure
 } from './guards';
 
@@ -86,5 +89,63 @@ describe('toHttpFailure', () => {
 
 	test('an HttpFailure passes through', () => {
 		expect(toHttpFailure(new HttpFailure(409, 'busy')).status).toBe(409);
+	});
+});
+
+describe('assertNotCrossOrigin', () => {
+	test('no Origin or the same origin passes, a foreign origin is 403', () => {
+		expect(statusOf(() => assertNotCrossOrigin(null, 'http://127.0.0.1:5173'))).toBe(200);
+		expect(
+			statusOf(() => assertNotCrossOrigin('http://127.0.0.1:5173', 'http://127.0.0.1:5173'))
+		).toBe(200);
+		expect(statusOf(() => assertNotCrossOrigin('http://localhost:3000', 'http://127.0.0.1:5173'))).toBe(
+			403
+		);
+	});
+});
+
+describe('readCappedBody', () => {
+	const url = 'http://127.0.0.1:5173/api/action';
+
+	test('reads a small body', async () => {
+		const body = '{"action":"crash"}';
+		expect(await readCappedBody(new Request(url, { method: 'POST', body }))).toBe(body);
+	});
+
+	test('a declared length over the cap is refused before reading', async () => {
+		const stream = new ReadableStream<Uint8Array>({ pull() {} });
+		const request = new Request(url, {
+			method: 'POST',
+			body: stream,
+			headers: { 'content-length': String(MAX_BODY_BYTES + 1) },
+			duplex: 'half'
+		} as RequestInit);
+		await expect(readCappedBody(request)).rejects.toMatchObject({ status: 413 });
+		expect(request.bodyUsed).toBe(false);
+	});
+
+	test('a stream that grows past the cap is cancelled without buffering the rest', async () => {
+		let chunksServed = 0;
+		let cancelled = false;
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				chunksServed += 1;
+				controller.enqueue(new Uint8Array(100));
+			},
+			cancel() {
+				cancelled = true;
+			}
+		});
+		const request = new Request(url, { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
+		await expect(readCappedBody(request)).rejects.toMatchObject({ status: 413 });
+		expect(cancelled).toBe(true);
+		expect(chunksServed).toBeLessThan(10);
+	});
+});
+
+describe('HttpFailure extras', () => {
+	test('carry extra JSON fields and default to none', () => {
+		expect(new HttpFailure(500, 'x', { chainReset: true }).extra).toEqual({ chainReset: true });
+		expect(new HttpFailure(400, 'x').extra).toEqual({});
 	});
 });

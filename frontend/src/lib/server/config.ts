@@ -3,12 +3,13 @@
  * Pure: no $env, no filesystem, so it runs under `bun test`.
  * Error messages name the offending variable or field and never echo a key.
  */
-import { isAbsolute } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import {
 	encodeAbiParameters,
 	getAddress,
 	isAddress,
 	keccak256,
+	zeroAddress,
 	type Address,
 	type Hex
 } from 'viem';
@@ -19,8 +20,21 @@ const FIXED = {
 	tickSpacing: 60,
 	tickLower: -887220,
 	tickUpper: 887220,
-	navFloorBps: 9900
+	navFloorBps: 9900,
+	initialLiquidity: '500000000000000000',
+	keeperBps: 5000
 };
+
+/** O2: the real Uniswap Labs contracts on Sepolia. A manifest naming anything else is refused. */
+export const LABS_ADDRESSES = {
+	poolManager: '0xE03A1074c86CFeDd5C142C4F04F1a1536e203543',
+	factory: '0xE6B0d96919334C33d06266d1420F97f6f434fA2B',
+	hook: '0x51247E2291d290d17C08813A175AC86465EdE8c0',
+	stateView: '0xE1Dd9c3fA50EDB962E442f60DfBc432e24537E4C'
+} as const satisfies Record<string, Address>;
+
+/** secp256k1 group order: a valid private key is in [1, N). */
+const SECP256K1_N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 
 export class ConfigError extends Error {
 	override name = 'ConfigError';
@@ -64,8 +78,8 @@ export type AddressField = (typeof ADDRESS_FIELDS)[number];
 export type Manifest = Record<AddressField, Address> & {
 	network: 'anvil-fork';
 	chainId: typeof LOCAL_CHAIN_ID;
-	forkBlock: string | null;
-	forkBlockHash: Hex | null;
+	forkBlock: string;
+	forkBlockHash: Hex;
 	poolKey: PoolKey;
 	poolId: Hex;
 	rwaIsCurrency0: boolean;
@@ -76,6 +90,8 @@ export type Manifest = Record<AddressField, Address> & {
 	navFloorBps: number;
 	keeperBps: number;
 	sourceCommit: string;
+	deployTransactions: Hex[];
+	liquidationTransaction: Hex | null;
 };
 
 export type SnapshotRecord = {
@@ -107,6 +123,11 @@ function requireKey(env: Record<string, string | undefined>, name: string): Hex 
 	if (!value || !PRIVATE_KEY.test(value)) {
 		throw new ConfigError(`${name} must be a 0x-prefixed 32-byte hex private key.`);
 	}
+	// viem would reject an out-of-range scalar with a message that prints it; refuse it here instead.
+	const scalar = BigInt(value);
+	if (scalar === 0n || scalar >= SECP256K1_N) {
+		throw new ConfigError(`${name} must be a valid secp256k1 private key.`);
+	}
 	return value as Hex;
 }
 
@@ -128,6 +149,11 @@ export function parseEnv(env: Record<string, string | undefined>): DemoConfig {
 	if (!isLoopbackHttpUrl(rpcUrl)) {
 		throw new ConfigError('ANVIL_RPC must be an http:// URL on 127.0.0.1, localhost or [::1].');
 	}
+	const deploymentFile = requireJsonPath(env, 'DEPLOYMENT_FILE');
+	const snapshotFile = requireJsonPath(env, 'SNAPSHOT_FILE');
+	if (resolve(snapshotFile) === resolve(deploymentFile)) {
+		throw new ConfigError('SNAPSHOT_FILE must differ from DEPLOYMENT_FILE.');
+	}
 	return {
 		rpcUrl,
 		keys: {
@@ -135,8 +161,8 @@ export function parseEnv(env: Record<string, string | undefined>): DemoConfig {
 			mm: requireKey(env, 'MM_PK'),
 			keeper: requireKey(env, 'KEEPER_PK')
 		},
-		deploymentFile: requireJsonPath(env, 'DEPLOYMENT_FILE'),
-		snapshotFile: requireJsonPath(env, 'SNAPSHOT_FILE')
+		deploymentFile,
+		snapshotFile
 	};
 }
 
@@ -151,6 +177,9 @@ function address(obj: Record<string, unknown>, field: string, prefix = ''): Addr
 	const value = obj[field];
 	if (typeof value !== 'string' || !isAddress(value, { strict: false })) {
 		throw new ConfigError(`manifest ${prefix}${field} must be an address.`);
+	}
+	if (value.toLowerCase() === zeroAddress) {
+		throw new ConfigError(`manifest ${prefix}${field} must not be the zero address.`);
 	}
 	return getAddress(value);
 }
@@ -168,14 +197,6 @@ function decimal(obj: Record<string, unknown>, field: string): bigint {
 		throw new ConfigError(`manifest ${field} must be a decimal string.`);
 	}
 	return BigInt(value);
-}
-
-function integer(obj: Record<string, unknown>, field: string): number {
-	const value = obj[field];
-	if (typeof value !== 'number' || !Number.isInteger(value)) {
-		throw new ConfigError(`manifest ${field} must be an integer.`);
-	}
-	return value;
 }
 
 export function computePoolId(key: PoolKey): Hex {
@@ -224,15 +245,41 @@ function parseNullable(
 	return value;
 }
 
+/** The four Labs addresses must be the O2 ones, and no two roles or contracts may share an address. */
+function checkAddresses(addresses: Record<AddressField, Address>): void {
+	for (const [field, expected] of Object.entries(LABS_ADDRESSES) as [AddressField, Address][]) {
+		if (addresses[field] !== getAddress(expected)) {
+			throw new ConfigError(`manifest ${field} must be the O2 Labs address ${expected}.`);
+		}
+	}
+	if (new Set(Object.values(addresses)).size !== ADDRESS_FIELDS.length) {
+		throw new ConfigError('manifest role and contract addresses must be distinct.');
+	}
+}
+
+function parseTransactions(obj: Record<string, unknown>): Hex[] {
+	const value = obj.deployTransactions;
+	if (!Array.isArray(value) || !value.every((h) => typeof h === 'string' && BYTES32.test(h))) {
+		throw new ConfigError('manifest deployTransactions must be a list of 32-byte transaction hashes.');
+	}
+	return value as Hex[];
+}
+
 export function parseManifest(json: unknown): Manifest {
 	const obj = asRecord(json, 'manifest');
 	exact(obj, 'schemaVersion', 1);
 	const network = exact(obj, 'network', 'anvil-fork' as const);
 	const chainId = exact(obj, 'chainId', LOCAL_CHAIN_ID);
+	const forkBlock = parseNullable(obj, 'forkBlock', DECIMAL);
+	const forkBlockHash = parseNullable(obj, 'forkBlockHash', BYTES32) as Hex | null;
+	if (forkBlock === null || forkBlockHash === null) {
+		throw new ConfigError('manifest forkBlock and forkBlockHash are required for anvil-fork.');
+	}
 	const addresses = Object.fromEntries(ADDRESS_FIELDS.map((f) => [f, address(obj, f)])) as Record<
 		AddressField,
 		Address
 	>;
+	checkAddresses(addresses);
 	const poolKey = parsePoolKey(obj.poolKey, addresses.pa, addresses.usdc, addresses.hook);
 	const poolId = parseNullable(obj, 'poolId', BYTES32);
 	if (!poolId || poolId.toLowerCase() !== computePoolId(poolKey)) {
@@ -246,18 +293,20 @@ export function parseManifest(json: unknown): Manifest {
 		...addresses,
 		network,
 		chainId,
-		forkBlock: parseNullable(obj, 'forkBlock', DECIMAL),
-		forkBlockHash: parseNullable(obj, 'forkBlockHash', BYTES32) as Hex | null,
+		forkBlock,
+		forkBlockHash,
 		poolKey,
 		poolId: poolId.toLowerCase() as Hex,
 		rwaIsCurrency0: poolKey.currency0 === addresses.pa,
 		deployBlock: decimal(obj, 'deployBlock'),
-		initialLiquidity: decimal(obj, 'initialLiquidity'),
+		initialLiquidity: BigInt(exact(obj, 'initialLiquidity', FIXED.initialLiquidity)),
 		tickLower: exact(obj, 'tickLower', FIXED.tickLower),
 		tickUpper: exact(obj, 'tickUpper', FIXED.tickUpper),
 		navFloorBps: exact(obj, 'navFloorBps', FIXED.navFloorBps),
-		keeperBps: integer(obj, 'keeperBps'),
-		sourceCommit
+		keeperBps: exact(obj, 'keeperBps', FIXED.keeperBps),
+		sourceCommit,
+		deployTransactions: parseTransactions(obj),
+		liquidationTransaction: parseNullable(obj, 'liquidationTransaction', BYTES32) as Hex | null
 	};
 }
 

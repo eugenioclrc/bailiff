@@ -91,11 +91,31 @@ function buildLogContext(manifest: Manifest): LogContext {
 
 type NodeInfo = { forkConfig?: { forkBlockNumber?: number | string | null } };
 
-/** Chain id 31337 and an Anvil node forked at the manifest's block; nothing else is accepted. */
-async function assertLocalAnvil(
-	client: PublicClient<Transport, Chain>,
-	manifest: Manifest
-): Promise<void> {
+/** Contracts that must have code: the four O2 Labs contracts and the local deployment the UI drives. */
+const CODE_FIELDS = [
+	'poolManager',
+	'factory',
+	'hook',
+	'stateView',
+	'market',
+	'adapter',
+	'rwa',
+	'pa',
+	'desk'
+] as const satisfies readonly AddressField[];
+
+/** The subset of the public client this check needs, so tests can pass a stub. */
+export type AnvilProbe = Pick<
+	PublicClient<Transport, Chain>,
+	'getChainId' | 'request' | 'getBlock' | 'getCode'
+>;
+
+/**
+ * Chain id 31337, an Anvil node forked at the manifest's block and block hash, and code at every
+ * manifest contract. A restarted Anvil without a redeploy fails here with an operator message
+ * instead of surfacing as an ABI decoding error later.
+ */
+export async function assertLocalAnvil(client: AnvilProbe, manifest: Manifest): Promise<void> {
 	const chainId = await client.getChainId();
 	if (chainId !== LOCAL_CHAIN_ID)
 		throw new ConfigError(`the RPC reports chain ${chainId}, not ${LOCAL_CHAIN_ID}.`);
@@ -110,10 +130,32 @@ async function assertLocalAnvil(
 		throw new ConfigError('the RPC does not answer anvil_nodeInfo, so it is not an Anvil node.');
 	}
 	const forkBlock = info.forkConfig?.forkBlockNumber;
-	if (manifest.forkBlock !== null && String(forkBlock ?? '') !== manifest.forkBlock) {
+	if (String(forkBlock ?? '') !== manifest.forkBlock) {
 		throw new ConfigError(
 			`Anvil is not forked at block ${manifest.forkBlock} as the manifest says.`
 		);
+	}
+	const [forkHeader, ...codes] = await Promise.all([
+		client.getBlock({ blockNumber: BigInt(manifest.forkBlock) }),
+		...CODE_FIELDS.map((field) => client.getCode({ address: manifest[field] }))
+	]);
+	if (forkHeader.hash?.toLowerCase() !== manifest.forkBlockHash.toLowerCase()) {
+		throw new ConfigError('Anvil fork block hash does not match the manifest.');
+	}
+	const missing = CODE_FIELDS.filter((_, i) => codes[i] === undefined || codes[i] === '0x');
+	if (missing.length) {
+		throw new ConfigError(
+			`manifest contracts have no code on this Anvil (${missing.join(', ')}); rerun the local deploy and seed (O4).`
+		);
+	}
+}
+
+/** Never lets viem's own message through: for an out-of-range scalar it prints the key. */
+function accountOf(key: DemoConfig['keys'][Role], role: Role): Account {
+	try {
+		return privateKeyToAccount(key);
+	} catch {
+		throw new ConfigError(`${role.toUpperCase()}_PK is not a valid secp256k1 private key.`);
 	}
 }
 
@@ -132,7 +174,7 @@ export async function loadContext(): Promise<DemoContext> {
 	await assertLocalAnvil(client, manifest);
 
 	const wallet = (role: Role) => {
-		const account = privateKeyToAccount(config.keys[role]);
+		const account = accountOf(config.keys[role], role);
 		if (account.address !== manifest[role]) {
 			throw new ConfigError(
 				`${role.toUpperCase()}_PK does not belong to the manifest ${role} address.`

@@ -11,5 +11,8 @@ export function ok(body: unknown): Response {
 export function fail(err: unknown, route: string): Response {
 	const failure = toHttpFailure(err);
 	if (failure.status >= 500) console.error(`[bailiff] ${route}: ${describeForLog(err)}`);
-	return json({ message: failure.message }, { status: failure.status, headers: NO_STORE });
+	return json(
+		{ ...failure.extra, message: failure.message },
+		{ status: failure.status, headers: NO_STORE }
+	);
 }

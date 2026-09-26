@@ -60,6 +60,22 @@ describe('parseEnv', () => {
 		expect(err.message).not.toContain('secret');
 	});
 
+	test('an out-of-range key is refused without echoing it in any form', () => {
+		for (const key of [`0x${'00'.repeat(32)}`, `0x${'f'.repeat(64)}`]) {
+			const err = expectConfigError(() => parseEnv({ ...goodEnv, KEEPER_PK: key }), 'KEEPER_PK');
+			expect(err.message).not.toContain(key.slice(2, 12));
+			const decimal = BigInt(key).toString();
+			if (decimal.length > 1) expect(err.message).not.toContain(decimal.slice(0, 12));
+		}
+	});
+
+	test('SNAPSHOT_FILE must not be the manifest', () => {
+		expectConfigError(
+			() => parseEnv({ ...goodEnv, SNAPSHOT_FILE: '/tmp/devenv/../devenv/anvil.json' }),
+			'SNAPSHOT_FILE'
+		);
+	});
+
 	test('requires absolute JSON paths', () => {
 		expectConfigError(
 			() => parseEnv({ ...goodEnv, DEPLOYMENT_FILE: 'anvil.json' }),
@@ -157,6 +173,49 @@ describe('parseManifest', () => {
 					poolKey: { ...manifest.poolKey, currency0: manifest.usdc, currency1: manifest.pa }
 				}),
 			'poolKey'
+		);
+	});
+
+	test('a fork manifest must name its fork block and hash', () => {
+		expectConfigError(() => parseManifest({ ...manifest, forkBlock: null }), 'forkBlock');
+		expectConfigError(() => parseManifest({ ...manifest, forkBlockHash: null }), 'forkBlock');
+	});
+
+	test('the Labs contracts are pinned to the O2 addresses', () => {
+		const dead = '0x000000000000000000000000000000000000dEaD';
+		for (const field of ['poolManager', 'factory', 'stateView'] as const) {
+			expectConfigError(() => parseManifest({ ...manifest, [field]: dead }), field);
+		}
+		expectConfigError(
+			() =>
+				parseManifest({ ...manifest, hook: dead, poolKey: { ...manifest.poolKey, hooks: dead } }),
+			'hook'
+		);
+	});
+
+	test('O2 fixed values are enforced', () => {
+		expectConfigError(() => parseManifest({ ...manifest, initialLiquidity: '1' }), 'initialLiquidity');
+		expectConfigError(() => parseManifest({ ...manifest, keeperBps: 20_000 }), 'keeperBps');
+	});
+
+	test('zero and duplicate addresses are refused', () => {
+		expectConfigError(
+			() => parseManifest({ ...manifest, market: '0x0000000000000000000000000000000000000000' }),
+			'market'
+		);
+		expectConfigError(() => parseManifest({ ...manifest, keeper: manifest.issuer }), 'distinct');
+	});
+
+	test('deployTransactions must be a list of transaction hashes', () => {
+		const { deployTransactions: _omit, ...withoutTxs } = manifest;
+		expectConfigError(() => parseManifest(withoutTxs), 'deployTransactions');
+		expectConfigError(
+			() => parseManifest({ ...manifest, deployTransactions: ['0x1234'] }),
+			'deployTransactions'
+		);
+		expectConfigError(
+			() => parseManifest({ ...manifest, liquidationTransaction: 'simulated' }),
+			'liquidationTransaction'
 		);
 	});
 
