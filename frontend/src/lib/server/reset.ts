@@ -12,6 +12,8 @@ import type { DemoContext } from './context';
 import { HttpFailure } from './guards';
 
 const SNAPSHOT_ID = /^0x[0-9a-fA-F]+$/;
+/** The revert already happened: the page must drop the old branch even though this is an error. */
+const CHAIN_RESET = { chainReset: true } as const;
 
 async function readRecord(ctx: DemoContext): Promise<SnapshotRecord> {
 	let text: string;
@@ -65,7 +67,8 @@ export async function resetToBaseline(ctx: DemoContext): Promise<ActionResponse>
 	if (typeof next !== 'string' || !SNAPSHOT_ID.test(next)) {
 		throw new HttpFailure(
 			500,
-			'The chain is back at the baseline, but evm_snapshot returned no id. Redeploy before the next reset.'
+			'The chain is back at the baseline, but evm_snapshot returned no id. Redeploy before the next reset.',
+			CHAIN_RESET
 		);
 	}
 	try {
@@ -73,7 +76,8 @@ export async function resetToBaseline(ctx: DemoContext): Promise<ActionResponse>
 	} catch {
 		throw new HttpFailure(
 			500,
-			`The chain is back at the baseline and snapshot ${next} was taken, but SNAPSHOT_FILE could not be written. Set its snapshotId to ${next}.`
+			`The chain is back at the baseline and snapshot ${next} was taken, but SNAPSHOT_FILE could not be written. Set its snapshotId to ${next}.`,
+			CHAIN_RESET
 		);
 	}
 	const block = await ctx.client.getBlock();
