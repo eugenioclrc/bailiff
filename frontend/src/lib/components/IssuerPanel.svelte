@@ -18,6 +18,7 @@
 	let wrapperRevoked = $derived(
 		s?.permissions.adapterWrapper.ok === true && !s.permissions.adapterWrapper.value
 	);
+	let paused = $derived(s?.rwaPaused.ok === true && s.rwaPaused.value);
 </script>
 
 <Panel
@@ -44,6 +45,11 @@
 	<Figure
 		label="Pool swapping"
 		shown={showBool(s?.permissions.swappingEnabled, 'enabled', 'disabled')}
+	/>
+	<Figure
+		label="RWA token"
+		shown={showBool(s?.rwaPaused, 'paused', 'active')}
+		state={paused ? 'bad' : 'plain'}
 	/>
 
 	{#snippet actions()}

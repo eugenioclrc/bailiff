@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { shortAddress } from '$lib/format';
-	import type { DecodedRevert, ErrorLayer } from '$lib/types';
+	import type { DecodedArg, DecodedRevert, ErrorLayer } from '$lib/types';
+	import { errorArgText } from '$lib/units';
 
 	let { revert }: { revert: DecodedRevert } = $props();
 
@@ -19,16 +20,27 @@
 		return fn.includes('(') ? `${fn.slice(0, fn.indexOf('('))}()` : fn;
 	}
 
+	/** Amounts in token units (proceeds=67,916.35 USDC); the raw integers stay in the tooltip. */
+	function argText(arg: DecodedArg): string {
+		return `${arg.name}=${arg.label ?? errorArgText(arg.name, arg.value) ?? arg.value}`;
+	}
+
+	function rawArgs(layer: ErrorLayer): string | undefined {
+		return layer.args.length ? layer.args.map((a) => `${a.name}=${a.value}`).join(', ') : undefined;
+	}
+
 	function describe(layer: ErrorLayer, index: number): string {
 		switch (layer.kind) {
 			case 'wrapped':
-				return `WrappedError: ${callName(layer.call)} failed, context ${layer.context ?? 'none'}`;
+				return layer.truncated
+					? `WrappedError nested too deep: ${callName(layer.call)} failed; the inner reason was kept raw, not decoded`
+					: `WrappedError: ${callName(layer.call)} failed, context ${layer.context ?? 'none'}`;
 			case 'empty':
 				return `Reverted without error data${where(layer, index)}`;
 			case 'unknown':
 				return `Unknown error selector ${layer.selector}${where(layer, index)}; raw data kept`;
 			default: {
-				const args = layer.args.map((a) => `${a.name}=${a.label ?? a.value}`).join(', ');
+				const args = layer.args.map(argText).join(', ');
 				const declared = layer.declaredBy.length
 					? ` (declared by ${layer.declaredBy.join(', ')})`
 					: '';
@@ -42,7 +54,7 @@
 	<p class="cause"><strong>{revert.name}</strong></p>
 	<ol class="layers" aria-label="Decoded revert, outermost to innermost">
 		{#each revert.layers as layer, i (i)}
-			<li style:--depth={i}>{describe(layer, i)}</li>
+			<li style:--depth={i} title={rawArgs(layer)}>{describe(layer, i)}</li>
 		{/each}
 	</ol>
 </div>

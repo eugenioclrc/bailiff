@@ -6,9 +6,14 @@
 	type Props = { logs: DecodedLog[]; rwaIsCurrency0: boolean };
 	let { logs, rwaIsCurrency0 }: Props = $props();
 
+	/** The canonical hook Swap is the evidence row: its emitter, pool id and sender are shown in full. */
 	function argText(log: DecodedLog, arg: DecodedArg): string {
-		if (arg.type === 'address') return arg.label ?? shortAddress(arg.value);
-		if (arg.type === 'bytes32') return `${arg.value.slice(0, 10)}…`;
+		const full = log.swap?.canonical === true;
+		if (arg.type === 'address') {
+			if (full) return arg.label ? `${arg.label} ${arg.value}` : arg.value;
+			return arg.label ?? shortAddress(arg.value);
+		}
+		if (arg.type === 'bytes32') return full ? arg.value : `${arg.value.slice(0, 10)}…`;
 		if (/^-?\d+$/.test(arg.value))
 			return formatUnit(arg.value, argUnit(log.emitter, log.event, arg.name, rwaIsCurrency0));
 		return arg.value;
@@ -48,7 +53,9 @@
 					<td class="num idx">{log.logIndex}</td>
 					<td>
 						{emitterName(log.emitter)}
-						<code class="addr" title={log.address}>{shortAddress(log.address)}</code>
+						<code class="addr" title={log.address}
+							>{log.swap?.canonical ? log.address : shortAddress(log.address)}</code
+						>
 					</td>
 					<td>
 						{log.event ?? 'undecoded'}
@@ -58,7 +65,15 @@
 						{#each log.args as arg (arg.name)}
 							<span class="arg" title={arg.value}
 								><span class="key">{arg.name}</span>
-								<span class="num">{argText(log, arg)}</span></span
+								<span
+									class={[
+										'num',
+										{
+											code:
+												log.swap?.canonical && (arg.type === 'address' || arg.type === 'bytes32')
+										}
+									]}>{argText(log, arg)}</span
+								></span
 							>
 						{/each}
 					</td>

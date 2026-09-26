@@ -32,23 +32,29 @@
 </svelte:head>
 
 <div class="page">
-	<AppHeader {demo} />
+	<!-- One grid row for header and banner, so the board always gets the remaining height. -->
+	<div class="top">
+		<AppHeader {demo} />
 
-	{#if demo.loadError}
-		<div class="banner" role="alert">
-			<p>Could not read chain state: {demo.loadError}</p>
-			<button type="button" onclick={() => void demo.refresh()}>Try again</button>
-		</div>
-	{/if}
+		{#if demo.loadError}
+			<div class="banner" role="alert">
+				<p>Could not read chain state: {demo.loadError}</p>
+				<button type="button" onclick={() => void demo.refresh()}>Try again</button>
+			</div>
+		{/if}
+	</div>
 
-	<main class="board" data-stale={demo.stale} aria-busy={demo.stale}>
-		<div class="roles">
+	<!-- Only chain figures dim while a refresh is due; the timeline's receipts are already final. -->
+	<main class="board">
+		<div class="roles" data-stale={demo.stale} aria-busy={demo.stale}>
 			<IssuerPanel {demo} />
 			<MakerPanel {demo} />
 			<KeeperPanel {demo} />
 			<BorrowerCard {demo} />
 		</div>
-		<MarketBand {demo} />
+		<div data-stale={demo.stale} aria-busy={demo.stale}>
+			<MarketBand {demo} />
+		</div>
 		<Timeline {demo} />
 	</main>
 
@@ -59,7 +65,7 @@
 	.page {
 		box-sizing: border-box;
 		display: grid;
-		grid-template-rows: auto auto minmax(0, 1fr);
+		grid-template-rows: auto minmax(0, 1fr);
 		gap: 10px;
 		height: 100dvh;
 		min-height: 640px;
@@ -71,6 +77,11 @@
 		grid-template-rows: auto auto minmax(0, 1fr);
 		gap: 10px;
 		min-height: 0;
+	}
+
+	.top {
+		display: grid;
+		gap: 8px;
 	}
 
 	.roles {

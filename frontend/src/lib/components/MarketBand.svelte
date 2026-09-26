@@ -17,12 +17,15 @@
 		if (!s) return '';
 		if (!floorEnforced)
 			return 'The deployed adapter does not enforce this floor yet; it sells at any spot.';
+		if (s.pool.spotAboveFloor === null) return 'Pool spot unavailable; floor status unknown.';
 		return s.pool.spotAboveFloor
 			? 'Spot is above the floor, so the adapter may sell.'
 			: 'Spot is at or below the floor: the adapter refuses to sell.';
 	});
 
 	type Stop = { key: HolderKey; name: string; role: string };
+	/** These must hold zero RWA outside a transaction; a leftover wei is flagged, never rounded away. */
+	const MUST_BE_EMPTY: ReadonlySet<HolderKey> = new Set(['adapter', 'keeper', 'poolManager']);
 	const PATH: Stop[] = [
 		{ key: 'market', name: 'MiniLend market', role: 'holds the collateral' },
 		{ key: 'adapter', name: 'Liquidation adapter', role: 'transit inside one tx' },
@@ -40,7 +43,9 @@
 	]);
 
 	function rwaOf(key: HolderKey) {
-		return showRead(holderOf(s, key)?.rwa, 'rwa');
+		const read = holderOf(s, key)?.rwa;
+		const holdsRwa = MUST_BE_EMPTY.has(key) && read?.ok === true && read.value !== '0';
+		return { ...showRead(read, 'rwa'), holdsRwa };
 	}
 </script>
 
@@ -79,8 +84,11 @@
 				{@const shown = rwaOf(stop.key)}
 				<li>
 					<span class="name">{stop.name}</span>
-					<span class={{ amount: true, num: shown.tone === 'value' }}>{shown.text}</span>
-					<span class="role">{stop.role}</span>
+					<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
+						>{shown.text}</span
+					>
+					<span class="role">{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
+					>
 				</li>
 			{/each}
 		</ol>
@@ -89,8 +97,11 @@
 				{@const shown = rwaOf(stop.key)}
 				<li>
 					<span class="name">{stop.name}</span>
-					<span class={{ amount: true, num: shown.tone === 'value' }}>{shown.text}</span>
-					<span class="role">{stop.role}</span>
+					<span class={{ amount: true, num: shown.tone === 'value', bad: shown.holdsRwa }}
+						>{shown.text}</span
+					>
+					<span class="role">{shown.holdsRwa ? 'holds RWA now: check the receipt' : stop.role}</span
+					>
 				</li>
 			{/each}
 		</ul>
@@ -227,6 +238,15 @@
 	.amount {
 		font-size: 20px;
 		line-height: 1.05;
+	}
+
+	/* Red text would vanish on the steel band, so a violation gets a solid chip instead. */
+	.amount.bad {
+		justify-self: start;
+		padding: 0 5px;
+		border-radius: 3px;
+		background: var(--color-alert);
+		color: #fff;
 	}
 
 	.role {

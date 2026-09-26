@@ -18,7 +18,8 @@
 	--color-caution: #8c5b00;
 	--color-sim: #5b3e9c;
 	--color-reset: #56626e;
-	--color-focus: #e0a100;
+	/* 5.7:1 on sheet, 4.9:1 on ground: a focus ring must reach 3:1 (WCAG 1.4.11), on a projector too. */
+	--color-focus: #8a5a00;
 
 	--font-display:
 		'DIN Condensed', 'Bahnschrift SemiCondensed', 'Roboto Condensed', 'Arial Narrow', sans-serif;

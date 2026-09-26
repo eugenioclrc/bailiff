@@ -22,6 +22,7 @@
 		<h1>Bailiff — executes liquidation without keeping the inventory</h1>
 		<p class="env">
 			<span class="chip">{s?.env.label ?? 'Anvil fork'}</span>
+			<span class="local">Local fork of Sepolia; no live transaction of this version</span>
 			{#if s}
 				<span>chain {s.env.chainId}</span>
 				<span>contracts at commit <code>{s.env.sourceCommit.slice(0, 7)}</code></span>
@@ -29,7 +30,8 @@
 		</p>
 	</div>
 	<div class="controls">
-		<p class={['sync', { warn: demo.stale || demo.loadError }]} role="status">{sync}</p>
+		<!-- Not a live region: it changes on every poll. Action outcomes are announced by the page. -->
+		<p class={['sync', { warn: demo.stale || demo.loadError }]}>{sync}</p>
 		<button
 			type="button"
 			class="refresh"
@@ -66,6 +68,11 @@
 		margin-top: 4px;
 		font-size: 12px;
 		color: var(--color-ink-2);
+	}
+
+	.local {
+		font-weight: 600;
+		color: var(--color-ink);
 	}
 
 	.chip {
