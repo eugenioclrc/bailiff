@@ -114,6 +114,8 @@
 	}
 
 	.banner button {
+		flex-shrink: 0;
+		white-space: nowrap;
 		padding: 3px 10px;
 		border: 1px solid var(--color-alert);
 		border-radius: 4px;
@@ -121,6 +123,12 @@
 		color: var(--color-alert);
 		font-weight: 600;
 		cursor: pointer;
+	}
+
+	@media (max-width: 1100px), (pointer: coarse) {
+		.banner button {
+			min-height: 44px;
+		}
 	}
 
 	/* Below the demo resolution the page scrolls instead of squeezing the timeline. */
