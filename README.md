@@ -41,7 +41,7 @@ forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast --slow
 forge script script/Seed.s.sol:Seed --rpc-url "$RPC_URL" --broadcast --slow
 ```
 
-Deployment runs in two stages because the PermissionsAdapter address is only known from DeployPA's mined receipt. The inputs of each script are listed in [OPERATIONS.md O4](docs/planning/2026-09-26-final/OPERATIONS.md). The scripts write the manifest to `deployments/anvil.json`.
+Deployment runs in two stages because the PermissionsAdapter address is only known from DeployPA's mined receipt: DeployPA creates the RWA, USDC and PermissionsAdapter, and Deploy takes those three addresses from that receipt. Seed funds the market maker, lender and borrower. The scripts write the manifest to `deployments/anvil.json`.
 
 Then record the healthy baseline, which the console's reset button returns to:
 
