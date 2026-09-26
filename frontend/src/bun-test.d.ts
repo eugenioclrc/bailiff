@@ -15,6 +15,7 @@ declare module 'bun:test' {
 		toMatchObject(expected: unknown): R;
 		toContain(expected: unknown): R;
 		toMatch(expected: string | RegExp): R;
+		toEndWith(expected: string): R;
 		toBeNull(): R;
 		toBeUndefined(): R;
 		toBeDefined(): R;
