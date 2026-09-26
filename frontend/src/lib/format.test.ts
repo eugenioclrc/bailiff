@@ -100,6 +100,13 @@ describe('formatUnit', () => {
 		expect(formatUnit('17', 'raw')).toBe('17');
 	});
 
+	test('int keeps the integer exactly as cast prints it', () => {
+		expect(formatUnit('1790383025', 'int')).toBe('1790383025');
+		expect(formatUnit('-887220', 'int')).toBe('-887220');
+		expect(formatUnit('7777762805170000000000000000', 'int')).toBe('7777762805170000000000000000');
+		expect(formatUnit(3000n, 'int')).toBe('3000');
+	});
+
 	test('passes non-numeric strings through', () => {
 		expect(formatUnit('n/a', 'usdc')).toBe('n/a');
 	});

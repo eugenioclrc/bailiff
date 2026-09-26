@@ -20,6 +20,22 @@ const USDC_ARGS = new Set([
 
 const RWA_ARGS = new Set(['seized', 'seize', 'sold']);
 
+/** Pool and oracle integers a judge checks against cast, which prints them ungrouped. */
+const PLAIN_INT_ARGS = new Set([
+	'timestamp',
+	'tick',
+	'tickLower',
+	'tickUpper',
+	'tickSpacing',
+	'sqrtPriceX96',
+	'liquidity',
+	'liquidityDelta',
+	'fee',
+	'protocolFee',
+	'id',
+	'flags'
+]);
+
 /** Which decimals an event argument is expressed in. */
 export function argUnit(
 	emitter: string,
@@ -36,6 +52,7 @@ export function argUnit(
 		return arg === rwaSide ? 'rwa' : 'usdc';
 	}
 	if (event === 'NavUpdated' && arg === 'nav') return 'wad';
+	if (PLAIN_INT_ARGS.has(arg)) return 'int';
 	if (RWA_ARGS.has(arg)) return 'rwa';
 	if (USDC_ARGS.has(arg)) return 'usdc';
 	return 'raw';

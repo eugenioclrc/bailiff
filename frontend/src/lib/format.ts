@@ -12,8 +12,8 @@ const Q192 = 2n ** 192n;
 const PRICE_SCALE = 10n ** 30n;
 const BPS = 10_000n;
 
-export const UNIT_DECIMALS: Record<Unit, number> = { usdc: 6, rwa: 18, wad: 18, raw: 0 };
-const UNIT_FRACTION: Record<Unit, number> = { usdc: 2, rwa: 4, wad: 2, raw: 0 };
+export const UNIT_DECIMALS: Record<Unit, number> = { usdc: 6, rwa: 18, wad: 18, raw: 0, int: 0 };
+const UNIT_FRACTION: Record<Unit, number> = { usdc: 2, rwa: 4, wad: 2, raw: 0, int: 0 };
 
 const FLAG_NAMES: [number, string][] = [
 	[0x8000, 'HOLDER'],
@@ -82,6 +82,7 @@ export function formatFixed(value: bigint, decimals: number, fraction: number): 
 
 export function formatUnit(value: string | bigint, unit: Unit, fraction?: number): string {
 	if (typeof value === 'string' && !/^-?\d+$/.test(value)) return value;
+	if (unit === 'int') return BigInt(value).toString();
 	return formatFixed(BigInt(value), UNIT_DECIMALS[unit], fraction ?? UNIT_FRACTION[unit]);
 }
 

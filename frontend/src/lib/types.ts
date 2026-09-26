@@ -17,7 +17,8 @@ export type ActionName = (typeof ACTIONS)[number];
 
 export type ActionStatus = 'mined' | 'simulation-reverted' | 'reset';
 
-export type Unit = 'usdc' | 'rwa' | 'wad' | 'raw';
+/** 'raw' groups thousands; 'int' prints an integer exactly as the chain returns it. */
+export type Unit = 'usdc' | 'rwa' | 'wad' | 'raw' | 'int';
 
 export type DecodedArg = {
 	name: string;

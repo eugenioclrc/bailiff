@@ -181,7 +181,24 @@ describe('argUnit', () => {
 		expect(argUnit('poolManager', 'Swap', 'amount1', true)).toBe('usdc');
 		expect(argUnit('poolManager', 'Swap', 'amount0', false)).toBe('usdc');
 		expect(argUnit('market', 'NavUpdated', 'nav', true)).toBe('wad');
-		expect(argUnit('market', 'NavUpdated', 'timestamp', true)).toBe('raw');
+	});
+
+	test('integers that are not amounts print as the chain returns them, with no grouping', () => {
+		expect(argUnit('market', 'NavUpdated', 'timestamp', true)).toBe('int');
+		for (const arg of ['tick', 'sqrtPriceX96', 'liquidity', 'fee']) {
+			expect(argUnit('hook', 'Swap', arg, true)).toBe('int');
+		}
+		for (const arg of ['tickLower', 'tickUpper', 'liquidityDelta']) {
+			expect(argUnit('poolManager', 'ModifyLiquidity', arg, true)).toBe('int');
+		}
+		expect(argUnit('poolManager', 'Initialize', 'tickSpacing', true)).toBe('int');
+		expect(argUnit('poolManager', 'ProtocolFeeUpdated', 'protocolFee', true)).toBe('int');
+		expect(argUnit('poolManager', 'Transfer', 'id', true)).toBe('int');
+		expect(argUnit('rwa', 'FlagsSet', 'flags', true)).toBe('int');
+	});
+
+	test('an unnamed integer still falls back to the grouped raw unit', () => {
+		expect(argUnit('market', 'Supplied', 'shares', true)).toBe('raw');
 	});
 
 	test('names emitters for people', () => {
