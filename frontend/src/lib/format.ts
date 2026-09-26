@@ -95,24 +95,23 @@ export function formatFlags(flags: number): string {
 	return known.join(', ');
 }
 
+const DURATION_UNITS: [bigint, string][] = [
+	[86_400n, 'd'],
+	[3_600n, 'h'],
+	[60n, 'm'],
+	[1n, 's']
+];
+
+/** The largest unit plus the next one down, which is left out when it is zero ("1d", "1d 1h"). */
 export function formatDuration(seconds: bigint): string {
 	if (seconds <= 0n) return '0s';
-	const units: [bigint, string][] = [
-		[86_400n, 'd'],
-		[3_600n, 'h'],
-		[60n, 'm'],
-		[1n, 's']
-	];
-	const parts: string[] = [];
-	let rest = seconds;
-	for (const [size, suffix] of units) {
-		if (rest >= size || parts.length > 0) {
-			parts.push(`${rest / size}${suffix}`);
-			rest %= size;
-		}
-		if (parts.length === 2) break;
-	}
-	return parts.join(' ');
+	const index = DURATION_UNITS.findIndex(([size]) => seconds >= size);
+	const [size, suffix] = DURATION_UNITS[index];
+	const lead = `${seconds / size}${suffix}`;
+	const next = DURATION_UNITS[index + 1];
+	if (!next) return lead;
+	const remainder = (seconds % size) / next[0];
+	return remainder === 0n ? lead : `${lead} ${remainder}${next[1]}`;
 }
 
 export function shortAddress(address: string): string {

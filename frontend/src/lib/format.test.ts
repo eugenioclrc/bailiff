@@ -126,6 +126,8 @@ describe('formatDuration', () => {
 		expect(formatDuration(125n)).toBe('2m 5s');
 		expect(formatDuration(3_700n)).toBe('1h 1m');
 		expect(formatDuration(90_000n)).toBe('1d 1h');
+		expect(formatDuration(86_400n)).toBe('1d');
+		expect(formatDuration(3_600n)).toBe('1h');
 		expect(formatDuration(-5n)).toBe('0s');
 	});
 });
