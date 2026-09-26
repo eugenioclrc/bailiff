@@ -81,6 +81,7 @@ function signatureOf(name: string, inputs: readonly { type: string }[]): string 
 }
 
 function describeContext(details: Hex): string {
+	if (size(details) === 0) return 'no details';
 	if (size(details) < 4) return details;
 	const selector = slice(details, 0, 4);
 	try {

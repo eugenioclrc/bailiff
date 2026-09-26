@@ -2,7 +2,7 @@
  * Which token an event or error argument is expressed in, so amounts render in token units
  * instead of raw base units. Pure; shared by the revert decoder and the page.
  */
-import { formatFixed, formatUnit } from './format';
+import { formatHealthFactor, formatUnit } from './format';
 import type { Unit } from './types';
 
 const USDC_ARGS = new Set([
@@ -49,7 +49,7 @@ const UNIT_SUFFIX: Partial<Record<Unit, string>> = { usdc: ' USDC', rwa: ' RWA' 
  */
 export function errorArgText(name: string, value: string): string | null {
 	if (!/^-?\d+$/.test(value)) return null;
-	if (name === 'hf') return formatFixed(BigInt(value), 18, 4);
+	if (name === 'hf') return formatHealthFactor(BigInt(value));
 	if (name === 'nav') return `${formatUnit(value, 'wad')} USDC per RWA`;
 	const unit = RWA_ARGS.has(name) ? 'rwa' : USDC_ARGS.has(name) ? 'usdc' : null;
 	return unit ? `${formatUnit(value, unit)}${UNIT_SUFFIX[unit] ?? ''}` : null;

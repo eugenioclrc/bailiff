@@ -3,6 +3,7 @@ import {
 	encodeAbiParameters,
 	encodeErrorResult,
 	parseAbi,
+	slice,
 	toFunctionSelector,
 	type Hex
 } from 'viem';
@@ -130,6 +131,33 @@ describe('decodeRevert', () => {
 		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, unauthorized, '0xdeadbeef'), ctx);
 		expect(decoded.layers[0].context).toBe('0xdeadbeef');
 		expect(decoded.name).toBe('Unauthorized');
+	});
+
+	test('a known selector with a truncated payload is unknown and still names its declarers', () => {
+		const full = encodeErrorResult({
+			abi: errorsAbi,
+			errorName: 'InsufficientProceeds',
+			args: [1n, 2n]
+		});
+		const decoded = decodeRevert(slice(full, 0, 4), ctx, ADAPTER);
+		expect(decoded.name).toBe('UnknownError');
+		expect(decoded.layers[0].selector).toBe(slice(full, 0, 4));
+		expect(decoded.layers[0].declaredBy).toContain('LiquidationAdapter');
+		expect(decoded.layers[0].declaredBy).toContain('BountyMath');
+	});
+
+	test('a WrappedError with an empty reason ends in EmptyRevert', () => {
+		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, '0x', HOOK_CALL_FAILED), ctx);
+		expect(decoded.name).toBe('EmptyRevert');
+		expect(decoded.layers.map((l) => l.kind)).toEqual(['wrapped', 'empty']);
+	});
+
+	test('a WrappedError with empty details says so instead of printing 0x', () => {
+		const decoded = decodeRevert(wrapped(HOOK, BEFORE_SWAP, unauthorized, '0x'), ctx);
+		expect(decoded.name).toBe('Unauthorized');
+		expect(decoded.layers[0].context).toBe('no details');
+		expect(decoded.message).toContain('wrapped as no details');
+		expect(decoded.message).not.toContain('wrapped as 0x');
 	});
 
 	test('nesting deeper than eight wrappers is cut off and marked, not decoded forever', () => {
