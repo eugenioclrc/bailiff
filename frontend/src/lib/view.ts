@@ -1,5 +1,6 @@
 /** Display helpers shared by the page components. Pure. */
 import { ACTION_LABELS } from './actions';
+import { BASELINE_NAV } from './nav';
 import {
 	MAX_UINT256,
 	WAD,
@@ -76,6 +77,22 @@ export function syncText(
 		? `, ${`NAV set ${formatDuration(BigInt(state.navStatus.ageSeconds))} ago`.replaceAll(' ', NBSP)}`
 		: '';
 	return `Local chain at block ${state.block.number}${age}`;
+}
+
+/**
+ * The O3 healthy snapshot as the page sees it: NAV 100 and the adapter allowed as pool wrapper.
+ * Only there does "cut NAV to 85" make sense as the next step.
+ */
+export function atHealthyBaseline(
+	state: {
+		market: Pick<ChainState['market'], 'nav'>;
+		permissions: Pick<ChainState['permissions'], 'adapterWrapper'>;
+	} | null
+): boolean {
+	if (!state) return false;
+	const { nav } = state.market;
+	const wrapper = state.permissions.adapterWrapper;
+	return nav.ok && BigInt(nav.value) === BASELINE_NAV && wrapper.ok && wrapper.value;
 }
 
 export type HealthStatus = 'healthy' | 'liquidatable' | 'no-debt' | 'unknown';

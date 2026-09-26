@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Demo } from '$lib/demo.svelte';
+	import { atHealthyBaseline } from '$lib/view';
 	import TimelineEntry from './TimelineEntry.svelte';
 
 	type Props = {
@@ -11,6 +12,8 @@
 	let { demo, fullHeight = $bindable() }: Props = $props();
 
 	let rwaIsCurrency0 = $derived(demo.state?.rwaIsCurrency0 ?? true);
+	/** After an outside reset or action the chain may already be past the first step. */
+	let showFirstStep = $derived(!demo.branchNotice && atHealthyBaseline(demo.state));
 
 	/** New entries land on top: re-runs when the newest id changes and brings it into view. */
 	function scrollToNewest(node: HTMLElement) {
@@ -51,7 +54,8 @@
 		{#if demo.timeline.length === 0}
 			<p class="empty">
 				No actions recorded in this tab since the last reset. Actions sent from another tab are in
-				the server evidence log (EVIDENCE_FILE). Start with the issuer: cut NAV to 85.
+				the server evidence log (EVIDENCE_FILE).
+				{#if showFirstStep}Start with the issuer: cut NAV to 85.{/if}
 			</p>
 		{:else}
 			<ol>

@@ -8,6 +8,7 @@ import { readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Abi } from 'viem';
 import { miniLendAbi, paAbi, stateViewAbi } from '../abis.generated';
+import { BASELINE_NAV } from '../nav';
 import type { ActionResponse } from '../types';
 import { readMany, rpc, type ReadCall } from './chain';
 import { ConfigError, parseSnapshotRecord, type SnapshotRecord } from './config';
@@ -59,7 +60,7 @@ async function writeRecord(path: string, record: SnapshotRecord): Promise<void> 
 
 /** O3/O4 healthy baseline: NAV 100, borrower 1000 RWA / 75,000 USDC, adapter wrapper on, L 5e17. */
 export const BASELINE = {
-	nav: 100n * 10n ** 18n,
+	nav: BASELINE_NAV,
 	collateral: 1_000n * 10n ** 18n,
 	debt: 75_000n * 10n ** 6n
 } as const;

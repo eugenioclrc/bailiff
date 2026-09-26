@@ -1,6 +1,9 @@
 /** NAV freshness and the liquidation gate. Pure; mirrors MiniLend._freshNav. */
-import { formatDuration, navFloorWad } from './format';
+import { WAD, formatDuration, navFloorWad } from './format';
 import type { ChainState } from './types';
+
+/** O3 healthy snapshot NAV, in USDC per RWA with 18 decimals. */
+export const BASELINE_NAV = 100n * WAD;
 
 export type NavInputs = { nav?: bigint; updatedAt?: bigint; maxStaleness?: bigint };
 

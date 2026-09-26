@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import type { ActionResponse, ReadValue } from './types';
 import {
 	argUnit,
+	atHealthyBaseline,
 	callParts,
 	emitterName,
 	healthStatus,
@@ -174,6 +175,29 @@ describe('summarize', () => {
 		expect(
 			probeSummary({ repayAssets: '1', ok: false, error: { name: 'Unauthorized', message: '' } })
 		).toBe('Adapter route simulation would revert with Unauthorized. Nothing was sent.');
+	});
+});
+
+describe('atHealthyBaseline', () => {
+	const chain = (nav: string, wrapper: boolean) =>
+		({
+			market: { nav: ok(nav) },
+			permissions: { adapterWrapper: { ok: true, value: wrapper } }
+		}) as unknown as Parameters<typeof atHealthyBaseline>[0];
+
+	test('is true only at NAV 100 with the adapter wrapper allowed', () => {
+		expect(atHealthyBaseline(chain('100000000000000000000', true))).toBe(true);
+		expect(atHealthyBaseline(chain('85000000000000000000', true))).toBe(false);
+		expect(atHealthyBaseline(chain('100000000000000000000', false))).toBe(false);
+	});
+
+	test('an unread state is not the baseline', () => {
+		expect(atHealthyBaseline(null)).toBe(false);
+		const unread = {
+			market: { nav: missing },
+			permissions: { adapterWrapper: { ok: true, value: true } }
+		} as unknown as Parameters<typeof atHealthyBaseline>[0];
+		expect(atHealthyBaseline(unread)).toBe(false);
 	});
 });
 
