@@ -286,10 +286,12 @@
 	.rail {
 		--tie: 18px;
 		--ktie: 30px;
+		/* Room for the title on two lines at 17px, the size of the panel titles it leads. */
+		--head: 150px;
 		position: relative;
 		display: grid;
 		grid-template-columns:
-			150px max-content minmax(56px, 1fr) max-content minmax(56px, 1fr)
+			var(--head) max-content minmax(56px, 1fr) max-content minmax(56px, 1fr)
 			max-content minmax(56px, 1fr) max-content max-content;
 		grid-template-rows: 14px 26px 16px minmax(16px, auto) 16px auto;
 		grid-template-areas:
@@ -491,6 +493,20 @@
 		}
 		to {
 			--q: 1;
+		}
+	}
+
+	/*
+	 * 1101 to 1259px, where the header already wraps: the title steps down so the strip keeps its
+	 * segments wide enough for their labels and never runs past the viewport.
+	 */
+	@media (min-width: 1101px) and (max-width: 1259px) {
+		.rail {
+			--head: 110px;
+		}
+
+		.title {
+			font-size: 15px;
 		}
 	}
 
