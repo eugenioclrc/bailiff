@@ -99,9 +99,11 @@
 		gap: 10px;
 	}
 
+	/* The figure never breaks ("no debt" is two words); the status beside it wraps instead. */
 	.big {
 		font-size: 30px;
 		line-height: 1;
+		white-space: nowrap;
 	}
 
 	.status {
