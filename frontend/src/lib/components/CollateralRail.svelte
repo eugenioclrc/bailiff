@@ -5,7 +5,7 @@
 		STATIONS,
 		railScene,
 		railSentence,
-		residualLabel,
+		residualSplit,
 		type RailScene,
 		type Station
 	} from '$lib/rail';
@@ -108,22 +108,23 @@
 			? [`${seized} RWA`, `${seized} RWA`, `${seized} pool token`]
 			: ['seized RWA', 'seized RWA', 'as pool token']
 	);
-	let residual = $derived(
-		scene.kind === 'mined' ? residualLabel(scene.residualRoute) : 'residual to the borrower wallet'
-	);
+	/*
+	 * Idle lanes name the route without claiming where the residual lands: the deployed snapshot
+	 * pays the borrower wallet, the spec has MiniLend apply it. A mined receipt says which it was.
+	 */
 	let flow: Flow = $derived(
 		scene.kind === 'mined'
 			? {
 					proceeds: `${usdc(scene.proceeds)} USDC proceeds`,
-					repaid: `${usdc(scene.repaid)} repaid`,
+					repaid: `${usdc(scene.repaid)} debt repaid`,
 					bounty: `${usdc(scene.bounty)} bounty to the keeper`,
-					residual: residual ? `${usdc(scene.residual)} ${residual}` : null
+					residual: residualSplit(scene).join('; ') || null
 				}
 			: {
 					proceeds: 'USDC proceeds',
-					repaid: 'repaid',
+					repaid: 'debt repaid',
 					bounty: 'bounty to the keeper',
-					residual
+					residual: 'residual for the borrower'
 				}
 	);
 	/** Only a mined receipt or the idle route shows the USDC lanes; a refused route moved none. */

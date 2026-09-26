@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { railScene, railSentence, residualLabel, type RailScene } from './rail';
+import { railScene, railSentence, residualSplit, type RailScene } from './rail';
 import type { ActionItem, ProbeItem } from './timeline';
 import type {
 	ActionName,
@@ -104,8 +104,25 @@ describe('railScene', () => {
 			repaid: '75000000000',
 			bounty: '4500000000',
 			residual: '12041594333',
-			residualRoute: 'direct-to-borrower'
+			residualRoute: 'direct-to-borrower',
+			applied: null
 		});
+	});
+
+	test('a mined liquidation on the spec route carries how MiniLend applied the residual', () => {
+		const applied = { debtRepaid: '0', badDebtRecovered: '0', borrowerCredit: '12041594333' };
+		const item = action(13, 'liquidateFull', {
+			status: 'mined',
+			txHash: '0xd',
+			detail: {
+				reconciliation: {
+					...RECONCILIATION,
+					residualRoute: 'residual-applied',
+					residualApplied: applied
+				}
+			}
+		});
+		expect(railScene(item)).toMatchObject({ residualRoute: 'residual-applied', applied });
 	});
 
 	test('a mined liquidation without reconciled amounts leaves the rail idle', () => {
@@ -202,12 +219,61 @@ describe('railScene', () => {
 	});
 });
 
-describe('residualLabel', () => {
-	test('names where the residual went, as the receipt shows it', () => {
-		expect(residualLabel('direct-to-borrower')).toBe('residual to the borrower wallet');
-		expect(residualLabel('residual-applied')).toBe('residual applied by MiniLend');
-		expect(residualLabel('unaccounted')).toBe('residual with no matching transfer');
-		expect(residualLabel('none')).toBeNull();
+describe('residualSplit', () => {
+	const scene = (over: Partial<Extract<RailScene, { kind: 'mined' }>>) =>
+		({
+			kind: 'mined',
+			id: 1,
+			seized: '0',
+			proceeds: '0',
+			repaid: '0',
+			bounty: '0',
+			residual: '12041594333',
+			residualRoute: 'direct-to-borrower',
+			applied: null,
+			...over
+		}) as Extract<RailScene, { kind: 'mined' }>;
+
+	test('the deployed snapshot pays the residual to the borrower wallet, and says so', () => {
+		expect(residualSplit(scene({}))).toEqual(['12,041.59 residual to the borrower wallet']);
+	});
+
+	test('the spec route names each part MiniLend applied; credit is withdrawable by the borrower', () => {
+		const credit = scene({
+			residualRoute: 'residual-applied',
+			applied: { debtRepaid: '0', badDebtRecovered: '0', borrowerCredit: '12041594333' }
+		});
+		expect(residualSplit(credit)).toEqual(['12,041.59 credit withdrawable by borrower']);
+		const chunk = scene({
+			residual: '1244140000',
+			residualRoute: 'residual-applied',
+			applied: { debtRepaid: '1244140000', badDebtRecovered: '0', borrowerCredit: '0' }
+		});
+		expect(residualSplit(chunk)).toEqual(['1,244.14 residual to debt']);
+		const all = scene({
+			residual: '3000000000',
+			residualRoute: 'residual-applied',
+			applied: {
+				debtRepaid: '1000000000',
+				badDebtRecovered: '500000000',
+				borrowerCredit: '1500000000'
+			}
+		});
+		expect(residualSplit(all)).toEqual([
+			'1,000.00 residual to debt',
+			'500.00 to written-off debt',
+			'1,500.00 credit withdrawable by borrower'
+		]);
+	});
+
+	test('a residual without its event or transfer is flagged, and no residual shows nothing', () => {
+		expect(residualSplit(scene({ residualRoute: 'unaccounted' }))).toEqual([
+			'12,041.59 residual with no matching transfer'
+		]);
+		expect(residualSplit(scene({ residualRoute: 'none', residual: '0' }))).toEqual([]);
+		expect(residualSplit(scene({ residualRoute: 'residual-applied', applied: null }))).toEqual([
+			'12,041.59 residual with no ResidualApplied amounts'
+		]);
 	});
 });
 
@@ -223,6 +289,29 @@ describe('railSentence', () => {
 	test('reads a mined liquidation as the route and the split, in token units', () => {
 		expect(railSentence(mined)).toBe(
 			'Last mined liquidation: 935.2941 RWA went from MiniLend to the adapter to the pool wrapper (PA), which minted 935.2941 pool tokens to PoolManager. 91,541.59 USDC came back to the adapter: 75,000.00 repaid to MiniLend, 4,500.00 bounty to the keeper, 12,041.59 residual to the borrower wallet.'
+		);
+	});
+
+	test('reads the spec route with the credit withdrawable by the borrower', () => {
+		const spec = railScene(
+			action(13, 'liquidateFull', {
+				status: 'mined',
+				txHash: '0xd',
+				detail: {
+					reconciliation: {
+						...RECONCILIATION,
+						residualRoute: 'residual-applied',
+						residualApplied: {
+							debtRepaid: '0',
+							badDebtRecovered: '0',
+							borrowerCredit: '12041594333'
+						}
+					}
+				}
+			})
+		);
+		expect(railSentence(spec)).toEndWith(
+			'75,000.00 repaid to MiniLend, 4,500.00 bounty to the keeper, 12,041.59 credit withdrawable by borrower.'
 		);
 	});
 

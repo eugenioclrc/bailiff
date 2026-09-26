@@ -7,7 +7,7 @@
  */
 import { formatUnit } from './format';
 import type { TimelineItem } from './timeline';
-import type { DecodedRevert, ResidualRoute } from './types';
+import type { DecodedRevert, Reconciliation, ResidualRoute } from './types';
 
 export type Station = 'market' | 'adapter' | 'pa' | 'poolManager';
 
@@ -25,6 +25,8 @@ export type RailScene =
 			bounty: string;
 			residual: string;
 			residualRoute: ResidualRoute;
+			/** How MiniLend applied the residual (spec route); null on the deployed snapshot. */
+			applied: Reconciliation['residualApplied'];
 	  }
 	| {
 			kind: 'stopped';
@@ -125,21 +127,38 @@ export function railScene(item: TimelineItem | undefined): RailScene {
 		repaid: liquidation.repaid,
 		bounty: liquidation.bounty,
 		residual: liquidation.residual,
-		residualRoute: response.detail.reconciliation!.residualRoute
+		residualRoute: response.detail.reconciliation!.residualRoute,
+		applied: response.detail.reconciliation!.residualApplied
 	};
 }
 
-/** Where the residual went, as the receipt shows it; null when there was none. */
-export function residualLabel(route: ResidualRoute): string | null {
-	switch (route) {
+type MinedScene = Extract<RailScene, { kind: 'mined' }>;
+
+const usdc = (value: string) => formatUnit(value, 'usdc');
+
+/**
+ * Where the residual went, as the receipt shows it, one part per payee; empty when there was none.
+ * The deployed snapshot pays it to the borrower wallet. The spec route has MiniLend apply it: to
+ * debt, to written-off debt, then as a credit the borrower withdraws (O5), never as paid out.
+ */
+export function residualSplit(scene: MinedScene): string[] {
+	switch (scene.residualRoute) {
 		case 'direct-to-borrower':
-			return 'residual to the borrower wallet';
-		case 'residual-applied':
-			return 'residual applied by MiniLend';
+			return [`${usdc(scene.residual)} residual to the borrower wallet`];
+		case 'residual-applied': {
+			const applied = scene.applied;
+			if (!applied) return [`${usdc(scene.residual)} residual with no ResidualApplied amounts`];
+			const parts: [string, string][] = [
+				[applied.debtRepaid, 'residual to debt'],
+				[applied.badDebtRecovered, 'to written-off debt'],
+				[applied.borrowerCredit, 'credit withdrawable by borrower']
+			];
+			return parts.filter(([value]) => BigInt(value) > 0n).map(([v, what]) => `${usdc(v)} ${what}`);
+		}
 		case 'unaccounted':
-			return 'residual with no matching transfer';
+			return [`${usdc(scene.residual)} residual with no matching transfer`];
 		default:
-			return null;
+			return [];
 	}
 }
 
@@ -163,13 +182,12 @@ export function railSentence(scene: RailScene): string {
 		}
 		case 'mined': {
 			const rwa = formatUnit(scene.seized, 'rwa');
-			const residual = residualLabel(scene.residualRoute);
 			const split = [
-				`${formatUnit(scene.repaid, 'usdc')} repaid to MiniLend`,
-				`${formatUnit(scene.bounty, 'usdc')} bounty to the keeper`,
-				...(residual ? [`${formatUnit(scene.residual, 'usdc')} ${residual}`] : [])
+				`${usdc(scene.repaid)} repaid to MiniLend`,
+				`${usdc(scene.bounty)} bounty to the keeper`,
+				...residualSplit(scene)
 			];
-			return `Last mined liquidation: ${rwa} RWA went from MiniLend to the adapter to the pool wrapper (PA), which minted ${rwa} pool tokens to PoolManager. ${formatUnit(scene.proceeds, 'usdc')} USDC came back to the adapter: ${split.join(', ')}.`;
+			return `Last mined liquidation: ${rwa} RWA went from MiniLend to the adapter to the pool wrapper (PA), which minted ${rwa} pool tokens to PoolManager. ${usdc(scene.proceeds)} USDC came back to the adapter: ${split.join(', ')}.`;
 		}
 	}
 }
