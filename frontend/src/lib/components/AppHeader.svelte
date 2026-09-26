@@ -11,7 +11,7 @@
 
 <header class="top">
 	<div class="brand">
-		<h1>Bailiff — executes liquidation without keeping the inventory</h1>
+		<h1>Bailiff: executes liquidation without keeping the inventory</h1>
 		<p class="env">
 			<span class="chip">{s?.env.label ?? 'Anvil fork'}</span>
 			<span class="local">Local fork of Sepolia; no live transaction of this version</span>
