@@ -18,3 +18,9 @@ docs/
 .env
 .env.*
 !.env.example
+
+# local demo deploy output (scripts/deploy-local.sh)
+deployments/anvil.json
+deployments/anvil-snapshot.json
+deployments/*.tmp
+deployments/logs/
