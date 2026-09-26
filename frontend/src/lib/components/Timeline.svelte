@@ -116,11 +116,6 @@
 		color: var(--color-ink);
 	}
 
-	/*
-	 * position: relative makes this the containing block of the visually-hidden spans inside, so
-	 * they are clipped here instead of stretching the page. contain stops wheel scroll chaining,
-	 * and overflow-anchor: none lets a new top entry push older ones down rather than hide itself.
-	 */
 	.evidence-toggle {
 		order: 1;
 		margin-left: auto;
@@ -144,6 +139,11 @@
 		flex-basis: 100%;
 	}
 
+	/*
+	 * position: relative makes this the containing block of the visually-hidden spans inside, so
+	 * they are clipped here instead of stretching the page. contain stops wheel scroll chaining,
+	 * and overflow-anchor: none lets a new top entry push older ones down rather than hide itself.
+	 */
 	.scroll {
 		position: relative;
 		min-height: 120px;
