@@ -144,6 +144,16 @@
 		grid-area: ur;
 	}
 
+	/*
+	 * Right-aligned, so a long amount grows left over the plain lane toward MiniLend and never
+	 * into the adapter's junction, whose line would strike through its last word.
+	 */
+	.ur .label {
+		left: auto;
+		right: 6px;
+		transform: none;
+	}
+
 	.uj {
 		grid-area: uj;
 	}
