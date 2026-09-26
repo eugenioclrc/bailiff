@@ -131,9 +131,12 @@
 	/** Vertical layouts list USDC beside each segment: repaid, then proceeds past the PA. */
 	let usdcBeside = $derived([flow.repaid, `${flow.proceeds} from PoolManager`]);
 
-	/** Slot widths in figures: the widest balance each station holds in the demo, plus its unit. */
+	/**
+	 * Slot widths in figures: the widest balance each station holds in the demo, plus its unit. The
+	 * market's also covers its "NAV 100.00 floor 99% 99.00" line, which is wider than its balance.
+	 */
 	const SLOTS: Record<Station | 'keeper', number> = {
-		market: 12.6,
+		market: 13,
 		adapter: 7.8,
 		pa: 12.6,
 		poolManager: 9.4,
@@ -350,7 +353,7 @@
 		left: 4px;
 		right: 10px;
 		height: 2px;
-		background: color-mix(in srgb, var(--color-steel) 55%, transparent);
+		background: color-mix(in srgb, var(--color-steel) 75%, transparent);
 	}
 
 	.seg .line::after {
@@ -359,7 +362,7 @@
 		top: -4px;
 		right: -8px;
 		border: 5px solid transparent;
-		border-left: 8px solid color-mix(in srgb, var(--color-steel) 55%, transparent);
+		border-left: 8px solid color-mix(in srgb, var(--color-steel) 75%, transparent);
 	}
 
 	.seg .fill {
@@ -544,7 +547,7 @@
 			bottom: -9px;
 			left: -4px;
 			border: 5px solid transparent;
-			border-top: 8px solid color-mix(in srgb, var(--color-steel) 55%, transparent);
+			border-top: 8px solid color-mix(in srgb, var(--color-steel) 75%, transparent);
 		}
 
 		.seg.lit:not(.dashed) .line::after {
